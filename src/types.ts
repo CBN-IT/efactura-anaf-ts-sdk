@@ -1,24 +1,29 @@
 /**
- * Configuration for ANAF e-Factura client
- * 
- * @example
- * ```typescript
- * const config: AnafClientConfig = {
- *   clientId: 'your-oauth-client-id',
- *   clientSecret: 'your-oauth-client-secret',
- *   redirectUri: 'https://your-app.com/oauth/callback',
- *   vatNumber: 'RO12345678',
- *   testMode: true
- * };
- * ```
+ * Configuration for ANAF OAuth 2.0 authentication
  */
-export interface AnafClientConfig {
+export interface AnafAuthConfig {
   /** OAuth 2.0 client ID obtained from ANAF SPV */
   clientId: string;
   /** OAuth 2.0 client secret obtained from ANAF SPV */
   clientSecret: string;
   /** OAuth 2.0 redirect URI registered with ANAF */
   redirectUri: string;
+  /** Request timeout in milliseconds (default: 30000) */
+  timeout?: number;
+}
+
+/**
+ * Configuration for ANAF e-Factura client
+ * 
+ * @example
+ * ```typescript
+ * const config: AnafClientConfig = {
+ *   vatNumber: 'RO12345678',
+ *   testMode: true
+ * };
+ * ```
+ */
+export interface AnafClientConfig {
   /** Romanian VAT number (CIF) in format RO12345678 */
   vatNumber: string;
   /** Whether to use test environment (default: false) */

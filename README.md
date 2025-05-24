@@ -1,78 +1,113 @@
 # ANAF e-Factura TypeScript SDK
 
-Complete TypeScript SDK for Romanian ANAF e-Factura API with OAuth 2.0 authentication, UBL generation, and comprehensive API coverage.
+A comprehensive TypeScript SDK for interacting with the Romanian ANAF e-Factura system. This SDK provides OAuth 2.0 authentication, document upload/download, validation, and UBL generation capabilities.
 
 ## Features
 
-✅ **OAuth 2.0 Authentication** - One-time setup with USB token in browser  
-✅ **Complete API Coverage** - All 11 ANAF e-Factura endpoints  
-✅ **UBL 2.1 Generation** - CIUS-RO compliant XML invoices  
-✅ **TypeScript Support** - Full type safety and IntelliSense  
-✅ **Multiple Build Targets** - CommonJS, ESM, and TypeScript declarations  
-✅ **Comprehensive Testing** - Unit tests with high coverage  
-✅ **Production Ready** - Error handling, validation, and debugging support  
+- **OAuth 2.0 Authentication**: Complete OAuth flow with USB token support
+- **Document Operations**: Upload, status checking, and download
+- **Message Management**: List and paginate invoice messages
+- **Validation**: XML validation and digital signature verification
+- **PDF Conversion**: Convert XML invoices to PDF format
+- **UBL Generation**: Create compliant UBL 2.1 XML invoices
+- **TypeScript**: Full type safety and IntelliSense support
 
-## Quick Start
-
-### Installation
+## Installation
 
 ```bash
 pnpm add anaf-e-factura-sdk
 ```
 
-### 1. Get OAuth Credentials
+## Quick Start
 
-Register your application in ANAF SPV (Spațiul Privat Virtual):
-1. Go to "Administrare aplicații web service"
-2. Register your application
-3. Get `client_id`, `client_secret`
-4. Set your `redirect_uri` (e.g., `https://your-app.com/oauth/callback`)
+The SDK is organized into three main classes:
 
-### 2. Initialize Client
+### 1. AnafAuthenticator - OAuth 2.0 Authentication
+
+```typescript
+import { AnafAuthenticator } from 'anaf-e-factura-sdk';
+
+const auth = new AnafAuthenticator({
+  clientId: 'your-oauth-client-id',
+  clientSecret: 'your-oauth-client-secret',
+  redirectUri: 'https://your-app.com/oauth/callback'
+});
+
+// Get authorization URL (user will authenticate with USB token)
+const authUrl = auth.getAuthorizationUrl();
+console.log('Redirect user to:', authUrl);
+
+// Exchange authorization code for tokens
+const tokens = await auth.exchangeCodeForToken(authorizationCode);
+console.log('Access token:', tokens.access_token);
+
+// Refresh tokens when needed
+const newTokens = await auth.refreshAccessToken(tokens.refresh_token);
+```
+
+### 2. AnafClient - API Operations
 
 ```typescript
 import { AnafClient } from 'anaf-e-factura-sdk';
 
 const client = new AnafClient({
-  clientId: 'your-oauth-client-id',
-  clientSecret: 'your-oauth-client-secret',
-  redirectUri: 'https://your-app.com/oauth/callback',
   vatNumber: 'RO12345678',
-  testMode: true // Use false for production
+  testMode: true // Use test environment
 });
+
+// Upload a document
+const uploadResult = await client.uploadDocument(
+  tokens.access_token,
+  xmlContent,
+  {
+    standard: 'UBL',
+    executare: true
+  }
+);
+
+// Check upload status
+const status = await client.getUploadStatus(
+  tokens.access_token,
+  uploadResult.index_incarcare
+);
+
+// Download processed document
+if (status.id_descarcare) {
+  const result = await client.downloadDocument(
+    tokens.access_token,
+    status.id_descarcare
+  );
+}
+
+// List recent messages
+const messages = await client.getMessages(tokens.access_token, {
+  zile: 7, // Last 7 days
+  filtru: 'E' // Only errors
+});
+
+// Validate XML
+const validation = await client.validateXml(
+  tokens.access_token,
+  xmlContent,
+  'FACT1'
+);
+
+// Convert XML to PDF
+const pdfBuffer = await client.convertXmlToPdf(
+  tokens.access_token,
+  xmlContent,
+  'FACT1'
+);
 ```
 
-### 3. OAuth Authentication Flow
-
-The authentication happens **once** (or every 90 days) when the user authenticates with their USB token in the browser:
+### 3. UblBuilder - UBL XML Generation
 
 ```typescript
-// Step 1: Generate authorization URL
-const authUrl = client.getAuthorizationUrl('optional-state-for-security');
+import { UblBuilder } from 'anaf-e-factura-sdk';
 
-// Step 2: Redirect user to authUrl
-// User will:
-// - Go to ANAF login page
-// - Browser prompts for USB token certificate
-// - User inserts USB token, enters PIN
-// - User authorizes your application
-// - ANAF redirects back to your redirect_uri with code
+const builder = new UblBuilder();
 
-// Step 3: Exchange code for tokens
-const tokens = await client.exchangeCodeForToken(authorizationCode);
-
-// Step 4: Store tokens securely
-// tokens.refresh_token is valid for 90 days
-// tokens.access_token is valid for ~60 minutes
-```
-
-### 4. API Calls (No USB Token Needed)
-
-After authentication, all API calls use OAuth tokens:
-
-```typescript
-// Generate invoice XML
-const xml = client.generateInvoiceXml({
+const xml = builder.generateInvoiceXml({
   invoiceNumber: 'INV-2024-001',
   issueDate: new Date(),
   supplier: {
@@ -96,304 +131,379 @@ const xml = client.generateInvoiceXml({
   },
   lines: [
     {
-      description: 'Professional Services',
+      description: 'Product/Service',
       quantity: 1,
-      unitPrice: 1000,
+      unitPrice: 100,
       taxPercent: 19
     }
   ],
   isSupplierVatPayer: true
 });
+```
 
-// Upload to ANAF (no USB token required!)
+## Complete Example
+
+```typescript
+import { AnafAuthenticator, AnafClient, UblBuilder } from 'anaf-e-factura-sdk';
+
+// Setup
+const auth = new AnafAuthenticator({
+  clientId: process.env.ANAF_CLIENT_ID,
+  clientSecret: process.env.ANAF_CLIENT_SECRET,
+  redirectUri: 'https://myapp.com/oauth/callback'
+});
+
+const client = new AnafClient({
+  vatNumber: 'RO12345678',
+  testMode: true
+});
+
+const builder = new UblBuilder();
+
+// 1. Authentication (one-time setup)
+const authUrl = auth.getAuthorizationUrl();
+// Direct user to authUrl, they authenticate with USB token
+const tokens = await auth.exchangeCodeForToken(authCode);
+
+// 2. Generate invoice XML
+const xml = builder.generateInvoiceXml(invoiceData);
+
+// 3. Upload to ANAF
 const uploadResult = await client.uploadDocument(tokens.access_token, xml);
 
-// Check status
+// 4. Monitor status
 const status = await client.getUploadStatus(tokens.access_token, uploadResult.index_incarcare);
 
-// Get messages
-const messages = await client.getMessages(tokens.access_token, { zile: 7, filtru: 'T' });
+// 5. Download result
+if (status.id_descarcare) {
+  const result = await client.downloadDocument(tokens.access_token, status.id_descarcare);
+}
 ```
 
-### 5. Token Refresh
+## Development & Testing
 
-Access tokens expire after ~60 minutes. Refresh them automatically:
+### Prerequisites
+
+1. **USB Security Token**: Required for ANAF authentication
+   - Supported tokens: Any qualified certificate from Romanian CA
+   - Install manufacturer drivers (SafeNet, Gemalto, etc.)
+   - Certificate must be registered with ANAF SPV
+
+2. **ANAF OAuth Application**: Register at [ANAF Portal](https://anaf.ro)
+   - Navigate: Servicii Online → Înregistrare utilizatori → DEZVOLTATORI APLICAȚII
+   - Register application with your callback URL
+
+### Environment Setup
+
+Create a `.env` file in your project root:
+
+```env
+ANAF_CLIENT_ID=your_oauth_client_id_here
+ANAF_CLIENT_SECRET=your_oauth_client_secret_here
+```
+
+### Local Development with ngrok
+
+For local testing, you need a public HTTPS URL for OAuth callbacks:
+
+1. **Install ngrok**:
+   ```bash
+   # Using npm
+   npm install -g ngrok
+   
+   # Or download from https://ngrok.com/
+   ```
+
+2. **Expose local server**:
+   ```bash
+   # Start your local server on port 3000
+   npm start
+   
+   # In another terminal, expose it publicly
+   ngrok http 3000
+   ```
+
+3. **Update OAuth Settings**:
+   - Copy the ngrok HTTPS URL (e.g., `https://abc123.ngrok.io`)
+   - Register callback URL: `https://abc123.ngrok.io/oauth/callback`
+   - Update your AnafAuthenticator configuration:
+
+   ```typescript
+   const auth = new AnafAuthenticator({
+     clientId: process.env.ANAF_CLIENT_ID,
+     clientSecret: process.env.ANAF_CLIENT_SECRET,
+     redirectUri: 'https://abc123.ngrok.io/oauth/callback' // Your ngrok URL
+   });
+   ```
+
+### OAuth Authentication Flow
+
+The complete OAuth flow with USB token authentication:
+
+1. **Generate Authorization URL**:
+   ```typescript
+   const authUrl = auth.getAuthorizationUrl();
+   console.log('Direct user to:', authUrl);
+   ```
+
+2. **User Authentication Process**:
+   - User clicks/visits the authorization URL
+   - ANAF login page opens
+   - **Insert USB Token**: User inserts USB security token
+   - **Enter PIN**: User enters token PIN when prompted
+   - **Certificate Selection**: Browser shows certificate selection dialog
+   - **Select Certificate**: User selects appropriate certificate
+   - **Authorize Application**: User grants permissions to your app
+   - **Redirect**: Browser redirects to your callback URL with authorization code
+
+3. **Handle Callback**:
+   ```typescript
+   // Your callback endpoint receives: ?code=AUTH_CODE&state=STATE
+   app.get('/oauth/callback', async (req, res) => {
+     const { code } = req.query;
+     
+     try {
+       const tokens = await auth.exchangeCodeForToken(code);
+       // Store tokens securely
+       res.send('Authentication successful!');
+     } catch (error) {
+       res.status(400).send('Authentication failed');
+     }
+   });
+   ```
+
+4. **Use Access Token**:
+   ```typescript
+   // Token is valid for 1 hour
+   const client = new AnafClient({ vatNumber: 'RO12345678' });
+   const result = await client.uploadDocument(tokens.access_token, xmlContent);
+   ```
+
+5. **Refresh Tokens**:
+   ```typescript
+   // Refresh before expiration
+   const newTokens = await auth.refreshAccessToken(tokens.refresh_token);
+   ```
+
+### Automated Testing
+
+The SDK includes comprehensive Jest tests with an integrated OAuth flow:
+
+```bash
+# Run all tests
+pnpm test
+
+# Run OAuth authentication tests with callback server
+pnpm test:auth
+
+# Run tests with coverage
+pnpm test:coverage
+```
+
+### Manual OAuth Testing
+
+The test suite includes a helpful OAuth testing flow:
+
+1. **Start Test**: 
+   ```bash
+   pnpm test:auth
+   ```
+
+2. **Callback Server**: Automatically starts on `http://localhost:4040`
+
+3. **Get OAuth URL**: Test displays authorization URL in console
+
+4. **Complete OAuth**:
+   - Copy URL to browser
+   - Insert USB token when prompted
+   - Enter PIN and select certificate
+   - Authorize application
+   - Browser redirects to `localhost:4040/callback`
+
+5. **Automatic Token Handling**: Test captures code and exchanges for tokens
+
+### Testing Environment
+
+- **Test Environment**: All tests use ANAF test environment
+- **OAuth Endpoints**: `logincert.anaf.ro`
+- **API Endpoints**: `api.anaf.ro/test`
+- **Callback URL**: `http://localhost:4040/callback` (for tests)
+
+### Token Management
+
+- Tokens are automatically saved to `token.secret` during tests
+- Access tokens expire in 1 hour
+- Refresh tokens have longer validity
+- Tests automatically refresh expired tokens
+- Invalid tokens are cleaned up automatically
+
+### Troubleshooting
+
+#### USB Token Issues
+```
+❌ Certificate selection failed
+```
+**Solutions**:
+- Ensure USB token is properly inserted
+- Install manufacturer drivers
+- Try different browsers (Chrome recommended)
+- Check certificate validity in browser settings
+
+#### OAuth Callback Issues
+```
+❌ Redirect URI mismatch
+```
+**Solutions**:
+- Verify callback URL matches registered URL exactly
+- Include protocol (https://) and path
+- For ngrok: use HTTPS URL, not HTTP
+- Check for trailing slashes
+
+#### Network Issues
+```
+❌ Connection refused or timeout
+```
+**Solutions**:
+- Check internet connection
+- Verify firewall settings
+- For ngrok: ensure tunnel is active
+- Try different ngrok region: `ngrok http 3000 --region eu`
+
+#### Token Expiration
+```
+❌ Access token expired
+```
+**Solutions**:
+- Use refresh token to get new access token
+- Implement automatic token refresh in your app
+- Store token expiration time and refresh proactively
+
+## API Coverage
+
+The SDK implements all endpoints from the ANAF e-Factura OpenAPI specification:
+
+### Authentication
+- ✅ OAuth 2.0 authorization flow
+- ✅ Token exchange and refresh
+
+### Document Operations  
+- ✅ Upload documents (`/upload`, `/uploadb2c`)
+- ✅ Check upload status (`/stareMesaj`)
+- ✅ Download processed documents (`/descarcare`)
+
+### Message Management
+- ✅ List messages with pagination (`/listaMesajePaginatieFactura`)
+- ✅ List recent messages (`/listaMesajeFactura`)
+
+### Validation & Conversion
+- ✅ XML validation (`/validare/{standard}`)
+- ✅ Digital signature validation (`/api/validate/signature`)
+- ✅ XML to PDF conversion (`/transformare/{standard}`)
+- ✅ XML to PDF without validation (`/transformare/{standard}/DA`)
+
+### UBL Generation
+- ✅ UBL 2.1 compliant XML generation
+- ✅ Romanian CIUS-RO specification support
+
+## Environment Configuration
+
+The SDK supports both test and production environments:
 
 ```typescript
-// When access token expires, refresh it
-const newTokens = await client.refreshAccessToken(tokens.refresh_token);
-
-// Continue using new access token
-const newUpload = await client.uploadDocument(newTokens.access_token, xml);
-```
-
-## How It Works
-
-### Authentication Flow
-
-```mermaid
-sequenceDiagram
-    participant App as Your App
-    participant Browser as User Browser
-    participant ANAF as ANAF OAuth
-    participant Token as USB Token
-
-    App->>Browser: Redirect to OAuth URL
-    Browser->>ANAF: GET /authorize?client_id=...
-    ANAF->>Browser: Request client certificate
-    Browser->>Token: Prompt for certificate
-    Token->>Browser: Provide certificate (after PIN)
-    Browser->>ANAF: Send certificate
-    ANAF->>Browser: Redirect with auth code
-    Browser->>App: Return with auth code
-    App->>ANAF: POST /token (exchange code)
-    ANAF->>App: Return access + refresh tokens
-    
-    Note over App,ANAF: All subsequent API calls use Bearer tokens
-    App->>ANAF: API calls with Bearer token
-    ANAF->>App: API responses
-```
-
-### Key Points
-
-1. **USB Token Used Once**: Only during OAuth authentication in browser
-2. **Tokens Last Long**: Refresh token valid for 90 days
-3. **No Server Certificates**: Your server never handles certificates
-4. **Standard OAuth**: Uses standard OAuth 2.0 flow
-5. **Secure**: Certificate never leaves user's browser
-
-## API Reference
-
-### AnafClient
-
-Main client class for ANAF e-Factura API.
-
-#### Constructor
-
-```typescript
-const client = new AnafClient(config: AnafClientConfig);
-```
-
-#### OAuth Methods
-
-```typescript
-// Get authorization URL
-getAuthorizationUrl(state?: string, scope?: string): string
-
-// Exchange authorization code for tokens
-exchangeCodeForToken(code: string): Promise<TokenResponse>
-
-// Refresh access token
-refreshAccessToken(refreshToken: string): Promise<TokenResponse>
-```
-
-#### Document Operations
-
-```typescript
-// Upload document
-uploadDocument(accessToken: string, xmlContent: string, options?: UploadOptions): Promise<UploadStatus>
-
-// Upload B2C document
-uploadB2CDocument(accessToken: string, xmlContent: string): Promise<UploadStatus>
-
-// Get upload status
-getUploadStatus(accessToken: string, uploadId: string): Promise<UploadStatus>
-
-// Download document
-downloadDocument(accessToken: string, downloadId: string): Promise<string>
-```
-
-#### Message Operations
-
-```typescript
-// Get messages
-getMessages(accessToken: string, params: ListMessagesParams): Promise<ListMessagesResponse>
-
-// Get messages with pagination
-getMessagesPaginated(accessToken: string, params: PaginatedMessagesParams): Promise<ListMessagesResponse>
-```
-
-#### Validation & Conversion
-
-```typescript
-// Validate XML
-validateXml(accessToken: string, xmlContent: string, standard?: DocumentStandardType): Promise<ValidationResult>
-
-// Convert XML to PDF
-convertXmlToPdf(accessToken: string, xmlContent: string, standard?: DocumentStandardType, includeDiacritics?: boolean): Promise<Buffer>
-
-// Validate digital signature
-validateSignature(accessToken: string, xmlContent: string): Promise<ValidationResult>
-```
-
-#### UBL Generation
-
-```typescript
-// Generate invoice XML
-generateInvoiceXml(invoiceData: InvoiceInput): string
-```
-
-## Complete Example: SaaS Application
-
-```typescript
-import express from 'express';
-import { AnafClient } from 'anaf-e-factura-sdk';
-
-const app = express();
+// Test environment (recommended for development)
 const client = new AnafClient({
-  clientId: process.env.ANAF_CLIENT_ID!,
-  clientSecret: process.env.ANAF_CLIENT_SECRET!,
-  redirectUri: 'https://yourapp.com/oauth/anaf/callback',
+  vatNumber: 'RO12345678',
+  testMode: true
+});
+
+// Production environment  
+const client = new AnafClient({
   vatNumber: 'RO12345678',
   testMode: false
 });
-
-// Step 1: Initiate OAuth flow
-app.get('/auth/anaf', (req, res) => {
-  const state = generateRandomState(); // Implement CSRF protection
-  const authUrl = client.getAuthorizationUrl(state);
-  
-  // Store state for validation
-  req.session.oauthState = state;
-  
-  res.redirect(authUrl);
-});
-
-// Step 2: Handle OAuth callback
-app.get('/oauth/anaf/callback', async (req, res) => {
-  try {
-    const { code, state } = req.query;
-    
-    // Validate state parameter
-    if (state !== req.session.oauthState) {
-      throw new Error('Invalid state parameter');
-    }
-    
-    // Exchange code for tokens
-    const tokens = await client.exchangeCodeForToken(code as string);
-    
-    // Store tokens securely (encrypt in database)
-    await storeUserTokens(req.user.id, tokens);
-    
-    res.redirect('/dashboard?connected=true');
-  } catch (error) {
-    res.redirect('/dashboard?error=' + encodeURIComponent(error.message));
-  }
-});
-
-// Step 3: Upload invoice
-app.post('/api/invoices/upload', async (req, res) => {
-  try {
-    const { invoiceData } = req.body;
-    const userId = req.user.id;
-    
-    // Get stored tokens
-    let tokens = await getUserTokens(userId);
-    
-    // Refresh if needed
-    if (isTokenExpired(tokens.access_token)) {
-      tokens = await client.refreshAccessToken(tokens.refresh_token);
-      await storeUserTokens(userId, tokens);
-    }
-    
-    // Generate XML
-    const xml = client.generateInvoiceXml(invoiceData);
-    
-    // Upload to ANAF
-    const result = await client.uploadDocument(tokens.access_token, xml);
-    
-    res.json({ success: true, result });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.listen(3000);
 ```
 
 ## Error Handling
 
-The SDK provides specific error classes:
+The SDK provides specific error types for different scenarios:
 
 ```typescript
 import { 
-  AnafApiError, 
   AnafAuthenticationError, 
-  AnafValidationError 
+  AnafValidationError, 
+  AnafApiError 
 } from 'anaf-e-factura-sdk';
 
 try {
-  await client.uploadDocument(accessToken, xml);
+  await client.uploadDocument(token, xml);
 } catch (error) {
   if (error instanceof AnafAuthenticationError) {
-    // Token expired or invalid - refresh token
-    console.log('Authentication error:', error.message);
+    // Handle authentication issues - refresh token or re-authenticate
+    console.log('Authentication failed:', error.message);
   } else if (error instanceof AnafValidationError) {
-    // Invalid parameters
+    // Handle validation errors - fix XML or parameters
     console.log('Validation error:', error.message);
   } else if (error instanceof AnafApiError) {
-    // ANAF API error
-    console.log('API error:', error.message, error.statusCode);
+    // Handle API errors - check status, retry, or contact support
+    console.log('API error:', error.message);
   }
 }
 ```
 
-## ANAF API Endpoints Covered
+## TypeScript Support
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/upload` | `uploadDocument()` | Upload UBL invoices |
-| `/upload/b2c` | `uploadB2CDocument()` | Upload B2C invoices |
-| `/stareMesaj` | `getUploadStatus()` | Check upload status |
-| `/descarcare` | `downloadDocument()` | Download processed documents |
-| `/listaMesaje` | `getMessages()` | Get recent messages |
-| `/listaMesajePaginat` | `getMessagesPaginated()` | Get paginated messages |
-| `/validare` | `validateXml()` | Validate XML documents |
-| `/transformare/FACT1` | `convertXmlToPdf()` | Convert XML to PDF |
-| `/transformare/FCN` | `convertXmlToPdf()` | Convert credit notes to PDF |
-| `/validareUBL` | `validateSignature()` | Validate digital signatures |
-
-## TypeScript Types
-
-The SDK includes comprehensive TypeScript definitions:
+The SDK is written in TypeScript and provides comprehensive type definitions:
 
 ```typescript
 import type { 
-  AnafClientConfig,
-  TokenResponse,
+  InvoiceInput,
   UploadStatus,
   ListMessagesResponse,
-  InvoiceInput,
-  ValidationResult
+  ValidationResult,
+  OAuthTokens
 } from 'anaf-e-factura-sdk';
 ```
 
-## Testing
+## Security Best Practices
 
-```bash
-# Run tests
-pnpm test
+- **Never commit tokens**: Add `token.secret` and `.env` to `.gitignore`
+- **Use HTTPS**: Always use HTTPS for OAuth callbacks in production
+- **Validate certificates**: Ensure USB token certificates are valid and not expired
+- **Secure token storage**: Store tokens securely (encrypted, database, secure storage)
+- **Implement refresh**: Automatically refresh tokens before expiration
+- **Test environment**: Use test mode for development and staging
 
-# Run tests with coverage
-pnpm test:coverage
+## Production Deployment
 
-# Run tests in watch mode
-pnpm test:watch
-```
+When deploying to production:
 
-## Building
+1. **Register Production OAuth App**:
+   - Use your production domain for callback URL
+   - Get separate client credentials for production
 
-```bash
-# Build all targets
-pnpm build
+2. **Environment Configuration**:
+   ```typescript
+   const client = new AnafClient({
+     vatNumber: 'RO12345678',
+     testMode: false // Production mode
+   });
+   ```
 
-# Build and watch for changes
-pnpm dev
-```
+3. **Secure Callback Handling**:
+   - Use HTTPS for all OAuth callbacks
+   - Validate state parameter
+   - Implement CSRF protection
+   - Log authentication events
+
+4. **Token Management**:
+   - Store tokens securely (encrypted database)
+   - Implement automatic refresh
+   - Handle refresh token expiration gracefully
+   - Monitor token usage and expiration
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see LICENSE file for details.
 
 ## Contributing
 
@@ -407,10 +517,13 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 ## Support
 
 For questions about:
-- **ANAF e-Factura API**: Check [ANAF official documentation](https://www.anaf.ro/en/about-anaf/e-factura/)
+- **ANAF e-Factura API**: Check [ANAF official documentation](https://mfinante.gov.ro/web/efactura/informatii-tehnice)
 - **This SDK**: Open an issue on GitHub
-- **OAuth Setup**: Consult ANAF SPV documentation
+- **OAuth Setup**: Consult ANAF SPV documentation: [ANAF official documentation](https://static.anaf.ro/static/10/Anaf/Informatii_R/API/Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)
+- **USB Token Issues**: Contact your certificate provider
 
 ---
 
-**Perfect for**: SaaS applications, accounting software, ERP integrations, invoicing systems 
+**Perfect for**: SaaS applications, accounting software, ERP integrations, invoicing systems
+
+**Requirements**: USB security token, ANAF OAuth registration, Node.js 16+ 

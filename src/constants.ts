@@ -215,9 +215,9 @@ export const buildUploadParams = (
   params.append('cif', vatNumber);
   params.append('standard', options.standard || 'UBL');
   
-  if (options.extern) params.append('extern', 'true');
-  if (options.autofactura) params.append('autofactura', 'true');
-  if (options.executare) params.append('executare', 'true');
+  if (options.extern) params.append('extern', 'DA');
+  if (options.autofactura) params.append('autofactura', 'DA');
+  if (options.executare) params.append('executare', 'DA');
   
   return params;
 };

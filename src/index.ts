@@ -6,24 +6,34 @@
  * 
  * @example
  * ```typescript
- * import { AnafClient } from 'anaf-e-factura-sdk';
+ * import { AnafAuthenticator, AnafClient } from 'anaf-e-factura-sdk';
  * 
- * const client = new AnafClient({
+ * // Setup authentication
+ * const auth = new AnafAuthenticator({
  *   clientId: 'your-oauth-client-id',
  *   clientSecret: 'your-oauth-client-secret',
- *   redirectUri: 'https://your-app.com/callback',
+ *   redirectUri: 'https://your-app.com/callback'
+ * });
+ * 
+ * // Setup API client
+ * const client = new AnafClient({
  *   vatNumber: 'RO12345678',
  *   testMode: true
  * });
  * 
- * // Generate and upload invoice
- * const xml = client.generateInvoiceXml(invoiceData);
- * const uploadResult = await client.uploadDocument(accessToken, xml);
+ * // Authenticate and get tokens
+ * const authUrl = auth.getAuthorizationUrl();
+ * const tokens = await auth.exchangeCodeForToken(authCode);
+ * 
+ * // Use tokens for API operations
+ * const uploadResult = await client.uploadDocument(tokens.access_token, xmlContent);
  * ```
  */
 
 // Main exports
 export { AnafClient } from './AnafClient';
+export { AnafAuthenticator } from './AnafAuthenticator';
+export { UblBuilder } from './UblBuilder';
 
 // Types
 export * from './types';

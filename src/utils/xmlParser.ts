@@ -27,7 +27,52 @@ export function parseXmlResponse(xmlString: string): UploadStatus {
       throw new AnafXmlParsingError('Failed to parse XML response', xmlString);
     }
     
-    // Try to find the main response element
+    // Try to find the main response element - ANAF uses 'header' element
+    const header = doc.header || doc.Header;
+    
+    if (header) {
+      const content = Array.isArray(header) ? header[0] : header;
+      
+      // xmlbuilder2 stores attributes in '@' property when using { group: true }
+      const attributes = content['@'] || content;
+      
+      // Handle upload response (contains index_incarcare)
+      if (attributes.index_incarcare) {
+        return { 
+          index_incarcare: String(attributes.index_incarcare)
+        };
+      }
+      
+      // Handle status response (contains id_descarcare and/or stare)
+      if (attributes.id_descarcare || attributes.stare) {
+        return {
+          id_descarcare: attributes.id_descarcare ? String(attributes.id_descarcare) : undefined,
+          stare: attributes.stare ? String(attributes.stare) : undefined,
+        };
+      }
+      
+      // Handle error responses with ExecutionStatus
+      if (attributes.ExecutionStatus && attributes.ExecutionStatus !== '0') {
+        // Look for error message in child elements
+        const errorMessage = content.Errors?.['@']?.errorMessage || 
+                            content.Error?.['@']?.errorMessage ||
+                            content.Errors?.errorMessage ||
+                            content.Error?.errorMessage ||
+                            'Upload failed';
+        return { eroare: errorMessage };
+      }
+      
+      // If ExecutionStatus is 0, it's successful - look for other attributes
+      if (attributes.ExecutionStatus === '0') {
+        return {
+          index_incarcare: attributes.index_incarcare ? String(attributes.index_incarcare) : undefined,
+          id_descarcare: attributes.id_descarcare ? String(attributes.id_descarcare) : undefined,
+          stare: attributes.stare ? String(attributes.stare) : undefined,
+        };
+      }
+    }
+    
+    // Fallback: Try to find other common response structures
     const raspuns = doc.Raspuns || doc.Envelope?.Body?.Raspuns || doc.response || doc.Response;
 
     if (raspuns) {

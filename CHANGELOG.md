@@ -57,7 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Configuration
 - **Dual Authentication** - Support for both OAuth and certificate authentication
 - **Environment Support** - Test and production environment configuration
-- **Custom Axios Config** - Extensible HTTP client configuration
 - **TypeScript First** - Full type safety and IntelliSense support
 
 #### Developer Experience
@@ -69,7 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical Details
 
 #### Dependencies
-- `axios` ^1.7.0 - HTTP client for API requests
 - `date-fns` ^3.6.0 - Date manipulation and formatting
 - `qs` ^6.11.2 - Query string parsing and encoding
 - `xmlbuilder2` ^4.1.0 - XML document generation
