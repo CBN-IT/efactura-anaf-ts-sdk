@@ -1,6 +1,6 @@
 {
   "name": "efactura-anaf-ts-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Complete TypeScript SDK for Romanian ANAF e-Factura API - OAuth2, UBL generation, validation & PDF conversion",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,11 +20,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/florin-szilagyi/efactura-ts-sdk.git"
+    "url": "git+https://github.com/florin-szilagyi/efactura-anaf-ts-sdk.git"
   },
-  "homepage": "https://github.com/florin-szilagyi/efactura-ts-sdk#readme",
+  "homepage": "https://github.com/florin-szilagyi/efactura-anaf-ts-sdk#readme",
   "bugs": {
-    "url": "https://github.com/florin-szilagyi/efactura-ts-sdk/issues"
+    "url": "https://github.com/florin-szilagyi/efactura-anaf-ts-sdk/issues"
   },
   "keywords": [
     "anaf",
@@ -81,8 +81,7 @@
     "test:auth": "jest tests/auth.integration.test.ts --verbose",
     "test:all": "npm run test:unit && npm run test:integration",
     "docs": "typedoc src/index.ts --out docs --excludePrivate --excludeProtected",
-    "validate": "npm run lint:check && npm run format:check && npm run test:unit && npm run build",
-    "prepare": "npm run build",
+    "validate": "npm run lint:check && npm run format:check && npm run test:unit",
     "prepublishOnly": "npm run validate",
     "prepack": "npm run build",
     "postpack": "npm run clean",
