@@ -1,4 +1,3 @@
-import axios, { AxiosInstance } from 'axios';
 import {
   AnafAuthConfig,
   TokenResponse,
@@ -12,6 +11,7 @@ import {
   OAUTH_TOKEN_URL,
 } from './constants';
 import { buildOAuthAuthorizationUrl, encodeOAuthTokenRequest } from './utils/formEncoder';
+import { HttpClient } from './utils/httpClient';
 import { tryCatch } from './tryCatch';
 
 /**
@@ -19,7 +19,7 @@ import { tryCatch } from './tryCatch';
  */
 export class AnafAuthenticator {
   private config: Required<AnafAuthConfig>;
-  private httpClient: AxiosInstance;
+  private httpClient: HttpClient;
 
   constructor(config: AnafAuthConfig) {
     this.validateConfig(config);
@@ -29,7 +29,7 @@ export class AnafAuthenticator {
       timeout: config.timeout ?? 30000,
     };
 
-    this.httpClient = axios.create({
+    this.httpClient = new HttpClient({
       timeout: this.config.timeout
     });
   }

@@ -17,6 +17,20 @@ import {
   ValidationResult,
   InvoiceInput 
 } from '../src/types';
+import { tryCatch } from '../src/tryCatch';
+
+/**
+ * In order to run these tests you need to have a valid token set in token.secrets
+ * 
+ * 1. Test that the client can be created with valid configuration
+ * 2. Test that the client can be created with invalid configuration
+ * 3. Test that the client can upload a document
+ * 4. Test that the client can download a document
+ * 5. Test that the client can validate an XML document
+ * 6. Test that the client can convert an XML document to a PDF
+ * 7. Test that the client can handle errors gracefully
+ * 8. Test that the client can handle rate limits gracefully
+ */
 
 // Load environment variables
 dotenv.config();
@@ -88,16 +102,17 @@ describe('AnafClient Integration Tests', () => {
       accessToken = tokens.access_token;
       console.log('✅ Using existing valid access token');
     } else if (tokens?.refresh_token) {
-      try {
+      const {data, error} = tryCatch(async () => {
         console.log('🔄 Refreshing expired token...');
         const newTokens = await authenticator.refreshAccessToken(tokens.refresh_token);
         accessToken = newTokens.access_token;
         await saveTokens(newTokens);
         console.log('✅ Token refreshed successfully');
-      } catch (error) {
+      });
+      if (error) {
         console.log('❌ Token refresh failed, need new authentication');
         throw new Error('Integration tests require valid OAuth tokens. Run auth tests first.');
-      }
+      } 
     } else {
       throw new Error('Integration tests require valid OAuth tokens. Run auth tests first.');
     }
@@ -260,11 +275,12 @@ describe('AnafClient Integration Tests', () => {
         const messageWithId = messages.mesaje.find(m => m.id);
         
         if (messageWithId?.id) {
-          try {
+          const {error} = tryCatch(async () => {
             const downloadContent = await client.downloadDocument(accessToken, messageWithId.id);
             expect(downloadContent).toBeDefined();
             console.log(`✅ Download successful for message ${messageWithId.id}`);
-          } catch (error) {
+          });
+          if (error) {
             // Download may fail if no content available - this is expected
             console.log(`ℹ️ Download failed for message ${messageWithId.id} - likely no content available`);
             expect(error).toBeInstanceOf(AnafApiError);
@@ -331,7 +347,7 @@ describe('AnafClient Integration Tests', () => {
     });
 
     test('should convert XML to PDF with validation', async () => {
-      try {
+      const {data, error} = tryCatch(async () => {
         const pdfBuffer = await client.convertXmlToPdf(accessToken, testXml, 'FACT1');
 
         expect(pdfBuffer).toBeInstanceOf(Buffer);
@@ -342,7 +358,8 @@ describe('AnafClient Integration Tests', () => {
         expect(pdfHeader).toBe('%PDF');
         
         console.log(`✅ PDF conversion successful: ${pdfBuffer.length} bytes`);
-      } catch (error) {
+      });
+      if (error) {
         // PDF conversion may fail if XML is not valid for PDF generation
         console.log('ℹ️ PDF conversion failed - likely XML validation issues');
         expect(error).toBeInstanceOf(AnafApiError);
@@ -350,14 +367,15 @@ describe('AnafClient Integration Tests', () => {
     }, 30000);
 
     test('should convert XML to PDF without validation', async () => {
-      try {
+      const {data, error} = tryCatch(async () => {
         const pdfBuffer = await client.convertXmlToPdfNoValidation(accessToken, testXml, 'FACT1');
 
         expect(pdfBuffer).toBeInstanceOf(Buffer);
         expect(pdfBuffer.length).toBeGreaterThan(0);
         
         console.log(`✅ PDF conversion (no validation) successful: ${pdfBuffer.length} bytes`);
-      } catch (error) {
+      });
+      if (error) {
         // May still fail if XML structure is incompatible
         console.log('ℹ️ PDF conversion (no validation) failed');
         expect(error).toBeInstanceOf(AnafApiError);
@@ -432,15 +450,16 @@ describe('AnafClient Integration Tests', () => {
 
   // Helper functions
   async function loadTokens(): Promise<(TokenResponse & { obtained_at?: number; expires_at?: number }) | null> {
-    try {
+    const {data, error} = tryCatch(async () => {
       if (fs.existsSync(tokenFilePath)) {
         const tokenData = fs.readFileSync(tokenFilePath, 'utf8');
         return JSON.parse(tokenData);
       }
-    } catch (error) {
+    });
+    if (error) {
       console.log('Could not load tokens:', error);
     }
-    return null;
+    return data;
   }
 
   async function saveTokens(tokens: TokenResponse): Promise<void> {

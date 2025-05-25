@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { TokenResponse, InvoiceInput } from '../src/types';
+import { tryCatch } from '../src/tryCatch';
 
 /**
  * Test utilities for ANAF SDK tests
@@ -122,14 +123,16 @@ export class TestTokenManager {
   private static tokenFilePath = path.join(process.cwd(), 'token.secret');
 
   static async loadTokens(): Promise<(TokenResponse & { obtained_at?: number; expires_at?: number }) | null> {
-    try {
+    const {data, error} = tryCatch(async () => {
       if (fs.existsSync(this.tokenFilePath)) {
         const tokenData = fs.readFileSync(this.tokenFilePath, 'utf8');
         return JSON.parse(tokenData);
-      }
-    } catch (error) {
+    }});
+
+    if (error) {
       console.log('Could not load tokens:', error);
     }
+    return data;
     return null;
   }
 
@@ -144,12 +147,13 @@ export class TestTokenManager {
   }
 
   static async deleteTokens(): Promise<void> {
-    try {
+    const {data, error} = tryCatch(async () => {
       if (fs.existsSync(this.tokenFilePath)) {
         fs.unlinkSync(this.tokenFilePath);
         console.log('🗑️ Tokens deleted');
       }
-    } catch (error) {
+    });
+    if (error) {
       console.log('Could not delete tokens:', error);
     }
   }
@@ -165,12 +169,15 @@ export class TestTokenManager {
   }
 
   static hasValidTokens(): boolean {
-    try {
+    const {data, error} = tryCatch(() => {
       const tokens = this.loadTokens();
       return tokens !== null && !this.isTokenExpired(tokens as any);
-    } catch {
+    });
+    if (error) {
       return false;
     }
+    
+    return data;
   }
 }
 

@@ -1,4 +1,3 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
 import {
   AnafClientConfig,
   UploadStatus,
@@ -32,6 +31,7 @@ import {
 } from './constants';
 import { parseXmlResponse, parseJsonResponse, isErrorResponse, extractErrorMessage } from './utils/xmlParser';
 import { isValidDaysParameter } from './utils/dateUtils';
+import { HttpClient } from './utils/httpClient';
 import { tryCatch } from './tryCatch';
 
 /**
@@ -56,7 +56,7 @@ import { tryCatch } from './tryCatch';
  */
 export class AnafClient {
   private config: Required<AnafClientConfig>;
-  private httpClient: AxiosInstance;
+  private httpClient: HttpClient;
   private basePath: string;
 
   /**
@@ -78,12 +78,10 @@ export class AnafClient {
 
     this.basePath = this.config.basePath || getBasePath('oauth', this.config.testMode);
 
-    this.httpClient = axios.create({
-      timeout: this.config.timeout,
-      ...this.config.axiosOptions
+    this.httpClient = new HttpClient({
+      baseURL: this.basePath,
+      timeout: this.config.timeout
     });
-
-    this.setupInterceptors();
   }
 
   // ==========================================================================
@@ -113,15 +111,15 @@ export class AnafClient {
     this.validateUploadOptions(options);
 
     const params = buildUploadParams(this.config.vatNumber, options);
-    const url = `${this.basePath}${UPLOAD_PATH}?${params.toString()}`;
-
-    const headers = {
-      'Content-Type': 'text/plain',
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `${UPLOAD_PATH}?${params.toString()}`;
 
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.post<string>(url, xmlContent, { headers });
+      const response = await this.httpClient.post<string>(url, xmlContent, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       return parseXmlResponse(response.data);
     });
 
@@ -153,15 +151,15 @@ export class AnafClient {
     this.validateUploadOptions(options);
 
     const params = buildUploadParams(this.config.vatNumber, options);
-    const url = `${this.basePath}${UPLOAD_B2C_PATH}?${params.toString()}`;
-
-    const headers = {
-      'Content-Type': 'text/plain',
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `${UPLOAD_B2C_PATH}?${params.toString()}`;
 
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.post<string>(url, xmlContent, { headers });
+      const response = await this.httpClient.post<string>(url, xmlContent, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       return parseXmlResponse(response.data);
     });
 
@@ -195,14 +193,14 @@ export class AnafClient {
     this.validateUploadId(uploadId);
 
     const params = buildStatusParams(uploadId);
-    const url = `${this.basePath}${STATUS_MESSAGE_PATH}?${params.toString()}`;
-
-    const headers = {
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `${STATUS_MESSAGE_PATH}?${params.toString()}`;
 
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.get<string>(url, { headers });
+      const response = await this.httpClient.get<string>(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       return parseXmlResponse(response.data);
     });
 
@@ -235,14 +233,14 @@ export class AnafClient {
     this.validateDownloadId(downloadId);
 
     const params = buildDownloadParams(downloadId);
-    const url = `${this.basePath}${DOWNLOAD_PATH}?${params.toString()}`;
-
-    const headers = {
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `${DOWNLOAD_PATH}?${params.toString()}`;
 
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.get<string>(url, { headers });
+      const response = await this.httpClient.get<string>(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       return response.data;
     });
 
@@ -282,14 +280,14 @@ export class AnafClient {
       params.pagina,
       params.filtru
     );
-    const url = `${this.basePath}${LIST_MESSAGES_PAGINATED_PATH}?${queryParams.toString()}`;
-
-    const headers = {
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `${LIST_MESSAGES_PAGINATED_PATH}?${queryParams.toString()}`;
 
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.get(url, { headers });
+      const response = await this.httpClient.get(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       const data = parseJsonResponse<ListMessagesResponse>(response.data);
       
       if (isErrorResponse(data)) {
@@ -330,14 +328,14 @@ export class AnafClient {
       params.zile,
       params.filtru
     );
-    const url = `${this.basePath}${LIST_MESSAGES_PATH}?${queryParams.toString()}`;
-
-    const headers = {
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `${LIST_MESSAGES_PATH}?${queryParams.toString()}`;
 
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.get(url, { headers });
+      const response = await this.httpClient.get(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       const data = parseJsonResponse<ListMessagesResponse>(response.data);
       
       if (isErrorResponse(data)) {
@@ -379,15 +377,15 @@ export class AnafClient {
     this.validateXmlContent(xmlContent);
     this.validateDocumentStandard(standard);
 
-    const url = `${this.basePath}/validare/${standard}`;
-
-    const headers = {
-      'Content-Type': 'text/plain',
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `/validare/${standard}`;
 
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.post(url, xmlContent, { headers });
+      const response = await this.httpClient.post(url, xmlContent, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       const responseText = typeof response.data === 'string' 
         ? response.data 
         : JSON.stringify(response.data);
@@ -429,7 +427,7 @@ export class AnafClient {
   ): Promise<ValidationResult> {
     this.validateAccessToken(accessToken);
 
-    const url = `${this.basePath}/api/validate/signature`;
+    const url = `/api/validate/signature`;
 
     const formData = new FormData();
     
@@ -460,12 +458,12 @@ export class AnafClient {
       throw new AnafValidationError('Invalid signature file type. Expected File or Buffer');
     }
 
-    const headers = {
-      'Authorization': `Bearer ${accessToken}`
-    };
-
     const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.post(url, formData, { headers });
+      const response = await this.httpClient.post(url, formData, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
       const responseData = response.data;
 
       return {
@@ -501,20 +499,23 @@ export class AnafClient {
     this.validateXmlContent(xmlContent);
     this.validateDocumentStandard(standard);
 
-    const url = `${this.basePath}/transformare/${standard}`;
-
-    const headers = {
-      'Content-Type': 'text/plain',
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `/transformare/${standard}`;
 
     const {data, error} = tryCatch(async () => {
       const response = await this.httpClient.post(url, xmlContent, {
-        headers,
-        responseType: 'arraybuffer'
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${accessToken}`
+        }
       });
 
-      return Buffer.from(response.data);
+      // The HttpClient should return ArrayBuffer for PDF content type
+      if (response.data instanceof ArrayBuffer) {
+        return Buffer.from(response.data);
+      } else {
+        // Fallback for when content-type detection doesn't work
+        return Buffer.from(response.data as any);
+      }
     });
 
     if (error) {
@@ -545,20 +546,23 @@ export class AnafClient {
     this.validateXmlContent(xmlContent);
     this.validateDocumentStandard(standard);
 
-    const url = `${this.basePath}/transformare/${standard}/DA`;
-
-    const headers = {
-      'Content-Type': 'text/plain',
-      'Authorization': `Bearer ${accessToken}`
-    };
+    const url = `/transformare/${standard}/DA`;
 
     const {data, error} = tryCatch(async () => {
       const response = await this.httpClient.post(url, xmlContent, {
-        headers,
-        responseType: 'arraybuffer'
+        headers: {
+          'Content-Type': 'text/plain',
+          'Authorization': `Bearer ${accessToken}`
+        }
       });
 
-      return Buffer.from(response.data);
+      // The HttpClient should return ArrayBuffer for PDF content type
+      if (response.data instanceof ArrayBuffer) {
+        return Buffer.from(response.data);
+      } else {
+        // Fallback for when content-type detection doesn't work
+        return Buffer.from(response.data as any);
+      }
     });
 
     if (error) {
@@ -653,60 +657,8 @@ export class AnafClient {
     }
   }
 
-  private setupInterceptors(): void {
-    // Request interceptor for debugging
-    this.httpClient.interceptors.request.use(
-      (config) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[ANAF API] ${config.method?.toUpperCase()} ${config.url}`);
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    // Response interceptor for debugging
-    this.httpClient.interceptors.response.use(
-      (response) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[ANAF API] Response ${response.status} for ${response.config.url}`);
-        }
-        return response;
-      },
-      (error) => Promise.reject(error)
-    );
-  }
-
   private handleApiError(error: any, context: string): never {
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError;
-      let message = `${context}: ${axiosError.message}`;
-      
-      if (axiosError.response) {
-        const status = axiosError.response.status;
-        message = `${context}: HTTP ${status} - ${axiosError.message}`;
-        
-        if (typeof axiosError.response.data === 'string') {
-          const {data: parsedError} = tryCatch(() => {
-            return parseXmlResponse(axiosError.response?.data as string);
-          });
-
-          if (parsedError?.eroare) {
-            message += ` - ${parsedError.eroare}`;
-          }
-        }
-        
-        if (status === 401 || status === 403) {
-          throw new AnafAuthenticationError(message);
-        } else if (status >= 400 && status < 500) {
-          throw new AnafValidationError(message);
-        } else {
-          throw new AnafApiError(message, status, axiosError.response.data);
-        }
-      } else {
-        throw new AnafApiError(message);
-      }
-    } else if (error instanceof AnafSdkError) {
+    if (error instanceof AnafSdkError) {
       throw error;
     } else {
       throw new AnafSdkError(`${context}: ${error.message || 'Unknown error'}`);

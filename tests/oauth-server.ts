@@ -1,5 +1,6 @@
 import express from 'express';
 import { Server } from 'http';
+import { tryCatch } from '../src/tryCatch';
 
 export interface OAuthCallbackData {
   code?: string;
@@ -120,7 +121,7 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
     app,
     start: (port: number) => {
       return new Promise((resolve, reject) => {
-        try {
+        const {data, error} = tryCatch(async () => {
           server = app.listen(port, () => {
             console.log(`🌐 OAuth callback server running on http://localhost:${port}\n` +
                         `🔗 Test URL: http://localhost:${port}/test\n` +
@@ -131,9 +132,11 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
           });
           
           server.on('error', reject);
-        } catch (error) {
+        });
+        if (error) {
           reject(error);
         }
+        return data;
       });
     },
     

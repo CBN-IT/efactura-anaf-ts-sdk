@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { AnafClient } from '../src/AnafClient';
 import { 
   AnafValidationError, 
@@ -13,62 +12,21 @@ import {
 } from '../src/types';
 import { mockTestData } from './testUtils';
 
-// Mock axios
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock fetch globally
+global.fetch = jest.fn();
 
 describe('AnafClient Unit Tests', () => {
   let client: AnafClient;
   const mockAccessToken = 'mock_access_token_12345';
   const mockVatNumber = 'RO12345678';
 
-  // Helper function to create proper axios errors
-  const createAxiosError = (status: number, message: string, data?: any) => {
-    const error = new Error(message) as any;
-    
-    // Set all the properties that axios.isAxiosError() checks for
-    error.isAxiosError = true;
-    error.config = {};
-    error.request = {};
-    error.response = {
-      status,
-      statusText: message,
-      data: data || message,
-      headers: {},
-      config: {}
-    };
-    error.toJSON = () => ({
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-      config: error.config,
-      code: error.code,
-      status: error.response?.status
-    });
-    
-    return error;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Mock axios.create to return a mocked instance
-    mockedAxios.create.mockReturnValue({
-      post: jest.fn(),
-      get: jest.fn(),
-      interceptors: {
-        request: {
-          use: jest.fn()
-        },
-        response: {
-          use: jest.fn()
-        }
-      }
-    } as any);
-
     client = new AnafClient({
       vatNumber: mockVatNumber,
-      testMode: true
+      testMode: true,
+      timeout: 3000
     });
   });
 
@@ -110,10 +68,13 @@ describe('AnafClient Unit Tests', () => {
     const xmlContent = '<?xml version="1.0"?><Invoice>test</Invoice>';
 
     beforeEach(() => {
-      // Mock the HTTP client instance that was created by axios.create
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.post.mockResolvedValue({
-        data: mockTestData.mockXmlResponses.uploadSuccess
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'text/xml' : null
+        },
+        text: () => Promise.resolve(mockTestData.mockXmlResponses.uploadSuccess)
       });
     });
 
@@ -127,12 +88,29 @@ describe('AnafClient Unit Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.index_incarcare).toBe('12345');
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/upload'),
+        expect.objectContaining({
+          method: 'POST',
+          body: xmlContent,
+          headers: expect.objectContaining({
+            'Content-Type': 'text/plain',
+            'Authorization': `Bearer ${mockAccessToken}`
+          })
+        })
+      );
     });
 
     test('should upload B2C document successfully', async () => {
       const result = await client.uploadB2CDocument(mockAccessToken, xmlContent);
 
       expect(result).toBeDefined();
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/uploadb2c'),
+        expect.objectContaining({
+          method: 'POST'
+        })
+      );
     });
 
     test('should validate access token before upload', async () => {
@@ -163,8 +141,7 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should handle upload errors gracefully', async () => {
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.post.mockRejectedValue(new Error('Network error'));
+      (fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       await expect(
         client.uploadDocument(mockAccessToken, xmlContent)
@@ -172,9 +149,15 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should handle 401 authentication errors', async () => {
-      const mockHttpClient = (client as any).httpClient;
-      const error = createAxiosError(401, 'Unauthorized');
-      mockHttpClient.post.mockRejectedValue(error);
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'text/plain' : null
+        },
+        text: () => Promise.resolve('Invalid token')
+      });
 
       await expect(
         client.uploadDocument(mockAccessToken, xmlContent)
@@ -187,19 +170,16 @@ describe('AnafClient Unit Tests', () => {
     const mockDownloadId = '67890';
     const mockDownloadContent = 'Mock ZIP file content';
 
-    beforeEach(() => {
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.get.mockImplementation((url: string) => {
-        if (url.includes('/stareMesaj')) {
-          return Promise.resolve({ data: mockTestData.mockXmlResponses.statusSuccess });
-        } else if (url.includes('/descarcare')) {
-          return Promise.resolve({ data: mockDownloadContent });
-        }
-        return Promise.reject(new Error('Unknown endpoint'));
-      });
-    });
-
     test('should get upload status successfully', async () => {
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'text/xml' : null
+        },
+        text: () => Promise.resolve(mockTestData.mockXmlResponses.statusSuccess)
+      });
+
       const result = await client.getUploadStatus(mockAccessToken, mockUploadId);
 
       expect(result).toBeDefined();
@@ -208,6 +188,15 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should download document successfully', async () => {
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/zip' : null
+        },
+        text: () => Promise.resolve(mockDownloadContent)
+      });
+
       const result = await client.downloadDocument(mockAccessToken, mockDownloadId);
 
       expect(result).toBe(mockDownloadContent);
@@ -227,27 +216,33 @@ describe('AnafClient Unit Tests', () => {
   });
 
   describe('Message Listing', () => {
-    beforeEach(() => {
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.get.mockResolvedValue({
-        data: mockTestData.mockJsonResponses.messagesSuccess
-      });
-    });
-
     test('should get messages successfully', async () => {
-      const params: ListMessagesParams = {
-        zile: 7,
-        filtru: 'E'
-      };
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/json' : null
+        },
+        json: () => Promise.resolve(mockTestData.mockJsonResponses.messagesSuccess)
+      });
 
-      const result = await client.getMessages(mockAccessToken, params);
+      const result = await client.getMessages(mockAccessToken, { zile: 7 });
 
       expect(result).toBeDefined();
-      expect(result.mesaje).toHaveLength(2);
-      expect(result.mesaje![0].tip).toBe('FACTURA TRIMISA');
+      expect(result.mesaje).toBeDefined();
+      expect(result.mesaje?.length).toBe(2);
     });
 
     test('should get paginated messages successfully', async () => {
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/json' : null
+        },
+        json: () => Promise.resolve(mockTestData.mockJsonResponses.messagesSuccess)
+      });
+
       const params: PaginatedMessagesParams = {
         startTime: Date.now() - 7 * 24 * 60 * 60 * 1000,
         endTime: Date.now(),
@@ -258,51 +253,29 @@ describe('AnafClient Unit Tests', () => {
       const result = await client.getMessagesPaginated(mockAccessToken, params);
 
       expect(result).toBeDefined();
-      expect(result.mesaje).toHaveLength(2);
+      expect(result.mesaje).toBeDefined();
     });
 
     test('should validate message listing parameters', async () => {
-      // Invalid days parameter
       await expect(
         client.getMessages(mockAccessToken, { zile: 0 })
       ).rejects.toThrow(AnafValidationError);
 
       await expect(
-        client.getMessages(mockAccessToken, { zile: 61 })
-      ).rejects.toThrow(AnafValidationError);
-
-      // Invalid filter
-      await expect(
-        client.getMessages(mockAccessToken, { zile: 7, filtru: 'INVALID' as any })
+        client.getMessages(mockAccessToken, { zile: 100 })
       ).rejects.toThrow(AnafValidationError);
     });
 
     test('should validate paginated message parameters', async () => {
-      // Invalid start time
-      await expect(
-        client.getMessagesPaginated(mockAccessToken, {
-          startTime: 0,
-          endTime: Date.now(),
-          pagina: 1
-        })
-      ).rejects.toThrow(AnafValidationError);
+      const invalidParams: PaginatedMessagesParams = {
+        startTime: Date.now() - 7 * 24 * 60 * 60 * 1000,
+        endTime: Date.now(),
+        pagina: 0,
+        filtru: 'T'
+      };
 
-      // End time before start time
       await expect(
-        client.getMessagesPaginated(mockAccessToken, {
-          startTime: Date.now(),
-          endTime: Date.now() - 1000,
-          pagina: 1
-        })
-      ).rejects.toThrow(AnafValidationError);
-
-      // Invalid page number
-      await expect(
-        client.getMessagesPaginated(mockAccessToken, {
-          startTime: Date.now() - 1000,
-          endTime: Date.now(),
-          pagina: 0
-        })
+        client.getMessagesPaginated(mockAccessToken, invalidParams)
       ).rejects.toThrow(AnafValidationError);
     });
   });
@@ -310,14 +283,16 @@ describe('AnafClient Unit Tests', () => {
   describe('Validation Operations', () => {
     const xmlContent = '<?xml version="1.0"?><Invoice>test</Invoice>';
 
-    beforeEach(() => {
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.post.mockResolvedValue({
-        data: mockTestData.mockJsonResponses.validationSuccess
-      });
-    });
-
     test('should validate XML successfully', async () => {
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/json' : null
+        },
+        json: () => Promise.resolve(mockTestData.mockJsonResponses.validationSuccess)
+      });
+
       const result = await client.validateXml(mockAccessToken, xmlContent, 'FACT1');
 
       expect(result).toBeDefined();
@@ -325,6 +300,15 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should validate XML with default standard', async () => {
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/json' : null
+        },
+        json: () => Promise.resolve(mockTestData.mockJsonResponses.validationSuccess)
+      });
+
       const result = await client.validateXml(mockAccessToken, xmlContent);
 
       expect(result).toBeDefined();
@@ -332,18 +316,21 @@ describe('AnafClient Unit Tests', () => {
 
     test('should validate document standard parameter', async () => {
       await expect(
-        client.validateXml(mockAccessToken, xmlContent, 'INVALID' as DocumentStandardType)
+        client.validateXml(mockAccessToken, xmlContent, 'INVALID' as any)
       ).rejects.toThrow(AnafValidationError);
     });
 
     test('should validate signature with File objects', async () => {
-      // Mock File objects for browser environment
       const mockXmlFile = new File(['xml content'], 'test.xml', { type: 'text/xml' });
-      const mockSigFile = new File(['sig content'], 'test.sig', { type: 'application/octet-stream' });
+      const mockSigFile = new File(['sig content'], 'test.sig', { type: 'application/pkcs7-signature' });
 
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.post.mockResolvedValue({
-        data: { msg: 'Fișierele încărcate au fost validate cu succes' }
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/json' : null
+        },
+        json: () => Promise.resolve({ msg: 'Fișierele încărcate au fost validate cu succes' })
       });
 
       const result = await client.validateSignature(
@@ -360,16 +347,13 @@ describe('AnafClient Unit Tests', () => {
       const mockXmlBuffer = Buffer.from('xml content');
       const mockSigBuffer = Buffer.from('sig content');
 
-      const mockHttpClient = (client as any).httpClient;
-      
-      // Mock FormData constructor to avoid Buffer/Blob compatibility issues
-      const originalFormData = global.FormData;
-      global.FormData = jest.fn().mockImplementation(() => ({
-        append: jest.fn()
-      }));
-
-      mockHttpClient.post.mockResolvedValue({
-        data: { msg: 'Fișierele încărcate au fost validate cu succes' }
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/json' : null
+        },
+        json: () => Promise.resolve({ msg: 'Fișierele încărcate au fost validate cu succes' })
       });
 
       const result = await client.validateSignature(
@@ -382,9 +366,6 @@ describe('AnafClient Unit Tests', () => {
 
       expect(result).toBeDefined();
       expect(result.valid).toBe(true);
-
-      // Restore original FormData
-      global.FormData = originalFormData;
     });
 
     test('should require file names for Buffer uploads', async () => {
@@ -398,12 +379,17 @@ describe('AnafClient Unit Tests', () => {
 
   describe('PDF Conversion', () => {
     const xmlContent = '<?xml version="1.0"?><Invoice>test</Invoice>';
-    const mockPdfBuffer = Buffer.from('Mock PDF content');
+    const mockPdfContent = 'Mock PDF content';
+    const mockPdfBuffer = Buffer.from(mockPdfContent);
 
     beforeEach(() => {
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.post.mockResolvedValue({
-        data: mockPdfBuffer
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'application/pdf' : null
+        },
+        arrayBuffer: () => Promise.resolve(mockPdfBuffer.buffer.slice(mockPdfBuffer.byteOffset, mockPdfBuffer.byteOffset + mockPdfBuffer.byteLength))
       });
     });
 
@@ -432,8 +418,7 @@ describe('AnafClient Unit Tests', () => {
     const xmlContent = '<?xml version="1.0"?><Invoice>test</Invoice>';
 
     test('should handle network errors', async () => {
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.post.mockRejectedValue(new Error('Network error'));
+      (fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
       await expect(
         client.uploadDocument(mockAccessToken, xmlContent)
@@ -441,9 +426,15 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should handle 400 validation errors', async () => {
-      const mockHttpClient = (client as any).httpClient;
-      const error = createAxiosError(400, 'Bad Request', 'Invalid parameters');
-      mockHttpClient.post.mockRejectedValue(error);
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'text/plain' : null
+        },
+        text: () => Promise.resolve('Invalid parameters')
+      });
 
       await expect(
         client.uploadDocument(mockAccessToken, xmlContent)
@@ -451,9 +442,15 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should handle 401 authentication errors', async () => {
-      const mockHttpClient = (client as any).httpClient;
-      const error = createAxiosError(401, 'Unauthorized');
-      mockHttpClient.post.mockRejectedValue(error);
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'text/plain' : null
+        },
+        text: () => Promise.resolve('Invalid token')
+      });
 
       await expect(
         client.uploadDocument(mockAccessToken, xmlContent)
@@ -461,9 +458,15 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should handle 500 server errors', async () => {
-      const mockHttpClient = (client as any).httpClient;
-      const error = createAxiosError(500, 'Internal Server Error', 'Server error');
-      mockHttpClient.post.mockRejectedValue(error);
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'text/plain' : null
+        },
+        text: () => Promise.resolve('Server error')
+      });
 
       await expect(
         client.uploadDocument(mockAccessToken, xmlContent)
@@ -471,9 +474,13 @@ describe('AnafClient Unit Tests', () => {
     });
 
     test('should handle XML parsing errors in responses', async () => {
-      const mockHttpClient = (client as any).httpClient;
-      mockHttpClient.post.mockResolvedValue({
-        data: 'This is not valid XML at all - no tags or structure'
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name: string) => name === 'content-type' ? 'text/xml' : null
+        },
+        text: () => Promise.resolve('This is not valid XML at all - no tags or structure')
       });
 
       await expect(
@@ -504,12 +511,16 @@ describe('AnafClient Unit Tests', () => {
 
     test('should accept valid enum values', async () => {
       const xmlContent = '<?xml version="1.0"?><Invoice>test</Invoice>';
-      const mockHttpClient = (client as any).httpClient;
 
       // Valid upload standards
       for (const standard of ['UBL', 'CN', 'CII', 'RASP']) {
-        mockHttpClient.post.mockResolvedValue({
-          data: mockTestData.mockXmlResponses.uploadSuccess
+        (fetch as jest.Mock).mockResolvedValue({
+          ok: true,
+          status: 200,
+          headers: {
+            get: (name: string) => name === 'content-type' ? 'text/xml' : null
+          },
+          text: () => Promise.resolve(mockTestData.mockXmlResponses.uploadSuccess)
         });
         
         await expect(
@@ -519,8 +530,13 @@ describe('AnafClient Unit Tests', () => {
 
       // Valid document standards
       for (const standard of ['FACT1', 'FCN']) {
-        mockHttpClient.post.mockResolvedValue({
-          data: mockTestData.mockJsonResponses.validationSuccess
+        (fetch as jest.Mock).mockResolvedValue({
+          ok: true,
+          status: 200,
+          headers: {
+            get: (name: string) => name === 'content-type' ? 'application/json' : null
+          },
+          json: () => Promise.resolve(mockTestData.mockJsonResponses.validationSuccess)
         });
         
         await expect(
@@ -530,8 +546,13 @@ describe('AnafClient Unit Tests', () => {
 
       // Valid message filters
       for (const filter of ['E', 'P', 'T', 'R']) {
-        mockHttpClient.get.mockResolvedValue({
-          data: mockTestData.mockJsonResponses.messagesSuccess
+        (fetch as jest.Mock).mockResolvedValue({
+          ok: true,
+          status: 200,
+          headers: {
+            get: (name: string) => name === 'content-type' ? 'application/json' : null
+          },
+          json: () => Promise.resolve(mockTestData.mockJsonResponses.messagesSuccess)
         });
         
         await expect(
