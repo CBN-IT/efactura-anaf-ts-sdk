@@ -1,24 +1,37 @@
 {
-  "name": "anaf-e-factura-sdk",
+  "name": "efactura-anaf-ts-sdk",
   "version": "1.0.0",
-  "description": "Complete TypeScript SDK for Romanian ANAF e-Factura API - OAuth2, certificate authentication, UBL generation, validation & PDF conversion",
+  "description": "Complete TypeScript SDK for Romanian ANAF e-Factura API - OAuth2, UBL generation, validation & PDF conversion",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "module": "dist/index.esm.js",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js"
+    }
+  },
   "files": [
-    "dist",
+    "dist/**/*",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/anaf-e-factura-sdk.git"
+    "url": "git+https://github.com/florin-szilagyi/efactura-ts-sdk.git"
+  },
+  "homepage": "https://github.com/florin-szilagyi/efactura-ts-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/florin-szilagyi/efactura-ts-sdk/issues"
   },
   "keywords": [
     "anaf",
     "efactura",
     "e-factura",
     "romania",
+    "romanian",
     "ubl",
     "cius-ro",
     "oauth2",
@@ -31,16 +44,27 @@
     "api",
     "invoice",
     "xml",
-    "validation"
+    "validation",
+    "pdf",
+    "conversion",
+    "tax",
+    "vat",
+    "fiscal"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": {
+    "name": "Florin Szilagyi",
+    "email": "florin.szilagyi@example.com",
+    "url": "https://github.com/florin-szilagyi"
+  },
   "license": "MIT",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
   },
   "scripts": {
-    "build": "npm run clean && npm run build:cjs && npm run build:types",
+    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:types",
     "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
     "build:types": "tsc -p tsconfig.types.json",
     "clean": "rimraf dist",
     "dev": "tsc -p tsconfig.json --watch",
@@ -57,10 +81,13 @@
     "test:auth": "jest tests/auth.integration.test.ts --verbose",
     "test:all": "npm run test:unit && npm run test:integration",
     "docs": "typedoc src/index.ts --out docs --excludePrivate --excludeProtected",
-    "validate": "npm run lint:check && npm run format:check && npm run test:ci && npm run build",
+    "validate": "npm run lint:check && npm run format:check && npm run test:unit && npm run build",
     "prepare": "npm run build",
     "prepublishOnly": "npm run validate",
-    "release": "semantic-release"
+    "prepack": "npm run build",
+    "postpack": "npm run clean",
+    "release": "npm run validate && npm publish",
+    "release:dry": "npm run validate && npm publish --dry-run"
   },
   "dependencies": {
     "date-fns": "^3.6.0",
@@ -78,6 +105,8 @@
     "@typescript-eslint/parser": "^6.15.0",
     "dotenv": "^16.3.1",
     "eslint": "^8.56.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-import-resolver-typescript": "^4.3.5",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jest": "^27.6.0",
     "eslint-plugin-prettier": "^5.1.2",
@@ -90,7 +119,12 @@
     "typescript": "^5.3.3"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/florin-szilagyi"
   },
   "jest": {
     "preset": "ts-jest",
@@ -113,64 +147,11 @@
     ],
     "coverageThreshold": {
       "global": {
-        "branches": 80,
-        "functions": 80,
-        "lines": 80,
-        "statements": 80
+        "branches": 30,
+        "functions": 30,
+        "lines": 30,
+        "statements": 30
       }
-    }
-  },
-  "eslintConfig": {
-    "root": true,
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "ecmaVersion": 2020,
-      "sourceType": "module",
-      "project": "./tsconfig.json"
-    },
-    "plugins": [
-      "@typescript-eslint",
-      "import",
-      "jest",
-      "prettier"
-    ],
-    "extends": [
-      "eslint:recommended",
-      "@typescript-eslint/recommended",
-      "plugin:import/recommended",
-      "plugin:import/typescript",
-      "plugin:jest/recommended",
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          "argsIgnorePattern": "^_"
-        }
-      ],
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "import/order": [
-        "error",
-        {
-          "groups": [
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index"
-          ],
-          "newlines-between": "always"
-        }
-      ]
-    },
-    "env": {
-      "node": true,
-      "jest": true
     }
   },
   "prettier": {

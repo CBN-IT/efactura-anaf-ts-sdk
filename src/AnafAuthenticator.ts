@@ -1,15 +1,6 @@
-import {
-  AnafAuthConfig,
-  TokenResponse,
-} from './types';
-import {
-  AnafAuthenticationError,
-  AnafValidationError,
-} from './errors';
-import {
-  OAUTH_AUTHORIZE_URL,
-  OAUTH_TOKEN_URL,
-} from './constants';
+import { AnafAuthConfig, TokenResponse } from './types';
+import { AnafAuthenticationError, AnafValidationError } from './errors';
+import { OAUTH_AUTHORIZE_URL, OAUTH_TOKEN_URL } from './constants';
 import { buildOAuthAuthorizationUrl, encodeOAuthTokenRequest } from './utils/formEncoder';
 import { HttpClient } from './utils/httpClient';
 import { tryCatch } from './tryCatch';
@@ -23,14 +14,14 @@ export class AnafAuthenticator {
 
   constructor(config: AnafAuthConfig) {
     this.validateConfig(config);
-    
+
     this.config = {
       ...config,
       timeout: config.timeout ?? 30000,
     };
 
     this.httpClient = new HttpClient({
-      timeout: this.config.timeout
+      timeout: this.config.timeout,
     });
   }
 
@@ -43,7 +34,7 @@ export class AnafAuthenticator {
       response_type: 'code',
       redirect_uri: this.config.redirectUri,
       token_content_type: 'jwt',
-      scope
+      scope,
     });
   }
 
@@ -61,17 +52,13 @@ export class AnafAuthenticator {
       client_secret: this.config.clientSecret,
       redirect_uri: this.config.redirectUri,
       code,
-      token_content_type: 'jwt'
+      token_content_type: 'jwt',
     });
 
-    const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.post<TokenResponse>(
-        OAUTH_TOKEN_URL,
-        formData,
-        {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        }
-      );
+    const { data, error } = tryCatch(async () => {
+      const response = await this.httpClient.post<TokenResponse>(OAUTH_TOKEN_URL, formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
 
       if (!response.data?.access_token) {
         throw new AnafAuthenticationError('Token response missing access token');
@@ -101,17 +88,13 @@ export class AnafAuthenticator {
       client_secret: this.config.clientSecret,
       redirect_uri: this.config.redirectUri,
       refresh_token: refreshToken,
-      token_content_type: 'jwt'
+      token_content_type: 'jwt',
     });
 
-    const {data, error} = tryCatch(async () => {
-      const response = await this.httpClient.post<TokenResponse>(
-        OAUTH_TOKEN_URL,
-        formData,
-        {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        }
-      );
+    const { data, error } = tryCatch(async () => {
+      const response = await this.httpClient.post<TokenResponse>(OAUTH_TOKEN_URL, formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
 
       if (!response.data?.access_token) {
         throw new AnafAuthenticationError('Token response missing access token');
@@ -142,4 +125,4 @@ export class AnafAuthenticator {
       throw new AnafValidationError('OAuth redirect URI is required');
     }
   }
-} 
+}

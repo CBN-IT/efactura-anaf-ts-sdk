@@ -1,25 +1,25 @@
 import { create } from 'xmlbuilder2';
 import type { XMLBuilder } from 'xmlbuilder2/lib/interfaces'; // For v3.1.1
-import { 
-  InvoiceInput, 
-  InvoiceLine, 
-  Party, 
+import {
+  InvoiceInput,
+  InvoiceLine,
+  Party,
   Address,
-  UblInvoiceInput // Legacy compatibility
+  UblInvoiceInput, // Legacy compatibility
 } from '../types';
-import { 
-  UBL_CUSTOMIZATION_ID, 
-  INVOICE_TYPE_CODE, 
-  DEFAULT_CURRENCY, 
-  DEFAULT_COUNTRY_CODE, 
-  DEFAULT_UNIT_CODE 
+import {
+  UBL_CUSTOMIZATION_ID,
+  INVOICE_TYPE_CODE,
+  DEFAULT_CURRENCY,
+  DEFAULT_COUNTRY_CODE,
+  DEFAULT_UNIT_CODE,
 } from '../constants';
 import { formatDateForAnaf } from '../utils/dateUtils';
 import { AnafValidationError } from '../errors';
 
 /**
  * Enhanced UBL 2.1 Invoice Builder for ANAF e-Factura
- * 
+ *
  * Generates UBL 2.1 XML invoices compliant with Romanian CIUS-RO specification.
  * Supports multiple VAT rates, detailed validation, and comprehensive error handling.
  */
@@ -45,30 +45,48 @@ function buildPartyXml(root: XMLBuilder, tagName: string, party: Party): void {
   // Postal Address
   partyElement
     .ele('cac:PostalAddress')
-      .ele('cbc:StreetName').txt(address.street || '').up()
-      .ele('cbc:CityName').txt(address.city || '').up()
-      .ele('cbc:PostalZone').txt(address.postalZone || '').up()
-      .ele('cbc:CountrySubentity').txt(address.county || '').up()
-      .ele('cac:Country')
-        .ele('cbc:IdentificationCode').txt(address.countryCode || DEFAULT_COUNTRY_CODE).up()
-      .up()
+    .ele('cbc:StreetName')
+    .txt(address.street || '')
+    .up()
+    .ele('cbc:CityName')
+    .txt(address.city || '')
+    .up()
+    .ele('cbc:PostalZone')
+    .txt(address.postalZone || '')
+    .up()
+    .ele('cbc:CountrySubentity')
+    .txt(address.county || '')
+    .up()
+    .ele('cac:Country')
+    .ele('cbc:IdentificationCode')
+    .txt(address.countryCode || DEFAULT_COUNTRY_CODE)
+    .up()
+    .up()
     .up();
 
   // Party Legal Entity
   partyElement
     .ele('cac:PartyLegalEntity')
-      .ele('cbc:RegistrationName').txt(party.registrationName).up()
-      .ele('cbc:CompanyID').txt(party.companyId).up()
+    .ele('cbc:RegistrationName')
+    .txt(party.registrationName)
+    .up()
+    .ele('cbc:CompanyID')
+    .txt(party.companyId)
+    .up()
     .up();
 
   // Party Tax Scheme (if VAT number provided)
   if (party.vatNumber) {
     partyElement
       .ele('cac:PartyTaxScheme')
-        .ele('cbc:CompanyID').txt(party.vatNumber).up()
-        .ele('cac:TaxScheme')
-          .ele('cbc:ID').txt('VAT').up()
-        .up()
+      .ele('cbc:CompanyID')
+      .txt(party.vatNumber)
+      .up()
+      .ele('cac:TaxScheme')
+      .ele('cbc:ID')
+      .txt('VAT')
+      .up()
+      .up()
       .up();
   }
 }
@@ -93,15 +111,15 @@ function calculateLineExtension(line: InvoiceLine): number {
 function groupLinesByTax(lines: InvoiceLine[], isSupplierVatPayer: boolean): TaxGroup[] {
   const taxGroups = new Map<string, TaxGroup>();
 
-  lines.forEach(line => {
+  lines.forEach((line) => {
     const taxPercent = line.taxPercent || 0;
     const lineExtension = calculateLineExtension(line);
     const taxAmount = parseFloat((lineExtension * (taxPercent / 100)).toFixed(2));
-    
+
     // Determine tax category ID
     let categoryId: string;
     let exemptionReasonCode: string | undefined;
-    
+
     if (!isSupplierVatPayer) {
       categoryId = 'O'; // Not subject to VAT
       exemptionReasonCode = 'VATEX-EU-O';
@@ -112,7 +130,7 @@ function groupLinesByTax(lines: InvoiceLine[], isSupplierVatPayer: boolean): Tax
     }
 
     const key = `${categoryId}-${taxPercent}`;
-    
+
     if (taxGroups.has(key)) {
       const group = taxGroups.get(key)!;
       group.taxableAmount = parseFloat((group.taxableAmount + lineExtension).toFixed(2));
@@ -123,7 +141,7 @@ function groupLinesByTax(lines: InvoiceLine[], isSupplierVatPayer: boolean): Tax
         percent: taxPercent,
         taxableAmount: lineExtension,
         taxAmount,
-        exemptionReasonCode
+        exemptionReasonCode,
       });
     }
   });
@@ -239,14 +257,14 @@ function validateLine(line: InvoiceLine, index: number): void {
 
 /**
  * Build comprehensive UBL 2.1 Invoice XML
- * 
+ *
  * This function creates a complete UBL 2.1 XML invoice that complies with
  * the Romanian CIUS-RO specification for ANAF e-Factura.
- * 
+ *
  * @param input Invoice data
  * @returns UBL XML string
  * @throws {AnafValidationError} If input data is invalid
- * 
+ *
  * @example
  * ```typescript
  * const xml = buildInvoiceXml({
@@ -289,8 +307,8 @@ export function buildInvoiceXml(input: InvoiceInput): string {
 
   // Set defaults
   const currency = input.currency || DEFAULT_CURRENCY;
-  const isSupplierVatPayer = input.isSupplierVatPayer ?? (!!input.supplier.vatNumber);
-  
+  const isSupplierVatPayer = input.isSupplierVatPayer ?? !!input.supplier.vatNumber;
+
   // Format dates
   const issueDate = formatDateForAnaf(input.issueDate);
   const dueDate = input.dueDate ? formatDateForAnaf(input.dueDate) : issueDate;
@@ -302,21 +320,32 @@ export function buildInvoiceXml(input: InvoiceInput): string {
   const grandTotal = parseFloat((totalTaxableAmount + totalTaxAmount).toFixed(2));
 
   // Create XML document
-  const root = create({ version: '1.0', encoding: 'UTF-8' })
-    .ele('Invoice', {
-      'xmlns': 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2',
-      'xmlns:cbc': 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
-      'xmlns:cac': 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2'
-    });
+  const root = create({ version: '1.0', encoding: 'UTF-8' }).ele('Invoice', {
+    xmlns: 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2',
+    'xmlns:cbc': 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
+    'xmlns:cac': 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2',
+  });
 
   // Invoice header
   root
-    .ele('cbc:CustomizationID').txt(UBL_CUSTOMIZATION_ID).up()
-    .ele('cbc:ID').txt(input.invoiceNumber).up()
-    .ele('cbc:IssueDate').txt(issueDate).up()
-    .ele('cbc:DueDate').txt(dueDate).up()
-    .ele('cbc:InvoiceTypeCode').txt(INVOICE_TYPE_CODE).up()
-    .ele('cbc:DocumentCurrencyCode').txt(currency).up();
+    .ele('cbc:CustomizationID')
+    .txt(UBL_CUSTOMIZATION_ID)
+    .up()
+    .ele('cbc:ID')
+    .txt(input.invoiceNumber)
+    .up()
+    .ele('cbc:IssueDate')
+    .txt(issueDate)
+    .up()
+    .ele('cbc:DueDate')
+    .txt(dueDate)
+    .up()
+    .ele('cbc:InvoiceTypeCode')
+    .txt(INVOICE_TYPE_CODE)
+    .up()
+    .ele('cbc:DocumentCurrencyCode')
+    .txt(currency)
+    .up();
 
   // Parties
   buildPartyXml(root, 'cac:AccountingSupplierParty', input.supplier);
@@ -326,80 +355,91 @@ export function buildInvoiceXml(input: InvoiceInput): string {
   if (input.paymentIban) {
     root
       .ele('cac:PaymentMeans')
-        .ele('cbc:PaymentMeansCode').txt('30').up() // Credit transfer
-        .ele('cac:PayeeFinancialAccount')
-          .ele('cbc:ID').txt(input.paymentIban).up()
-        .up()
+      .ele('cbc:PaymentMeansCode')
+      .txt('30')
+      .up() // Credit transfer
+      .ele('cac:PayeeFinancialAccount')
+      .ele('cbc:ID')
+      .txt(input.paymentIban)
+      .up()
+      .up()
       .up();
   }
 
   // Tax total with subtotals for each tax group
-  const taxTotalElement = root.ele('cac:TaxTotal')
+  const taxTotalElement = root
+    .ele('cac:TaxTotal')
     .ele('cbc:TaxAmount', { currencyID: currency })
     .txt(totalTaxAmount.toFixed(2))
     .up();
 
   // Add tax subtotal for each tax group (if any)
   if (taxGroups.length > 0) {
-    taxGroups.forEach(group => {
+    taxGroups.forEach((group) => {
       const subtotalElement = taxTotalElement
         .ele('cac:TaxSubtotal')
-          .ele('cbc:TaxableAmount', { currencyID: currency })
-          .txt(group.taxableAmount.toFixed(2))
-          .up()
-          .ele('cbc:TaxAmount', { currencyID: currency })
-          .txt(group.taxAmount.toFixed(2))
-          .up()
-          .ele('cac:TaxCategory')
-            .ele('cbc:ID').txt(group.categoryId).up()
-            .ele('cbc:Percent').txt(group.percent.toFixed(2)).up();
+        .ele('cbc:TaxableAmount', { currencyID: currency })
+        .txt(group.taxableAmount.toFixed(2))
+        .up()
+        .ele('cbc:TaxAmount', { currencyID: currency })
+        .txt(group.taxAmount.toFixed(2))
+        .up()
+        .ele('cac:TaxCategory')
+        .ele('cbc:ID')
+        .txt(group.categoryId)
+        .up()
+        .ele('cbc:Percent')
+        .txt(group.percent.toFixed(2))
+        .up();
 
       // Add exemption reason for category O
       if (group.exemptionReasonCode) {
         subtotalElement.ele('cbc:TaxExemptionReasonCode').txt(group.exemptionReasonCode).up();
       }
 
-      subtotalElement
-        .ele('cac:TaxScheme')
-          .ele('cbc:ID').txt('VAT').up()
-        .up()
-      .up(); // End TaxCategory and TaxSubtotal
+      subtotalElement.ele('cac:TaxScheme').ele('cbc:ID').txt('VAT').up().up().up(); // End TaxCategory and TaxSubtotal
     });
   } else {
     // Add a default tax subtotal for empty invoices
     taxTotalElement
       .ele('cac:TaxSubtotal')
-        .ele('cbc:TaxableAmount', { currencyID: currency })
-        .txt('0.00')
-        .up()
-        .ele('cbc:TaxAmount', { currencyID: currency })
-        .txt('0.00')
-        .up()
-        .ele('cac:TaxCategory')
-          .ele('cbc:ID').txt('S').up()
-          .ele('cbc:Percent').txt('0.00').up()
-          .ele('cac:TaxScheme')
-            .ele('cbc:ID').txt('VAT').up()
-          .up()
-        .up()
+      .ele('cbc:TaxableAmount', { currencyID: currency })
+      .txt('0.00')
+      .up()
+      .ele('cbc:TaxAmount', { currencyID: currency })
+      .txt('0.00')
+      .up()
+      .ele('cac:TaxCategory')
+      .ele('cbc:ID')
+      .txt('S')
+      .up()
+      .ele('cbc:Percent')
+      .txt('0.00')
+      .up()
+      .ele('cac:TaxScheme')
+      .ele('cbc:ID')
+      .txt('VAT')
+      .up()
+      .up()
+      .up()
       .up();
   }
 
   // Legal monetary total
   root
     .ele('cac:LegalMonetaryTotal')
-      .ele('cbc:LineExtensionAmount', { currencyID: currency })
-      .txt(totalTaxableAmount.toFixed(2))
-      .up()
-      .ele('cbc:TaxExclusiveAmount', { currencyID: currency })
-      .txt(totalTaxableAmount.toFixed(2))
-      .up()
-      .ele('cbc:TaxInclusiveAmount', { currencyID: currency })
-      .txt(grandTotal.toFixed(2))
-      .up()
-      .ele('cbc:PayableAmount', { currencyID: currency })
-      .txt(grandTotal.toFixed(2))
-      .up()
+    .ele('cbc:LineExtensionAmount', { currencyID: currency })
+    .txt(totalTaxableAmount.toFixed(2))
+    .up()
+    .ele('cbc:TaxExclusiveAmount', { currencyID: currency })
+    .txt(totalTaxableAmount.toFixed(2))
+    .up()
+    .ele('cbc:TaxInclusiveAmount', { currencyID: currency })
+    .txt(grandTotal.toFixed(2))
+    .up()
+    .ele('cbc:PayableAmount', { currencyID: currency })
+    .txt(grandTotal.toFixed(2))
+    .up()
     .up();
 
   // Invoice lines
@@ -408,7 +448,7 @@ export function buildInvoiceXml(input: InvoiceInput): string {
     const lineExtension = calculateLineExtension(line);
     const taxPercent = line.taxPercent || 0;
     const roundedUnitPrice = parseFloat(line.unitPrice.toFixed(2));
-    
+
     // Determine tax category for this line
     let lineTaxCategory: string;
     if (!isSupplierVatPayer) {
@@ -421,28 +461,38 @@ export function buildInvoiceXml(input: InvoiceInput): string {
 
     const lineElement = root
       .ele('cac:InvoiceLine')
-        .ele('cbc:ID').txt(lineId).up()
-        .ele('cbc:InvoicedQuantity', { unitCode: line.unitCode || DEFAULT_UNIT_CODE })
-        .txt(line.quantity.toString())
-        .up()
-        .ele('cbc:LineExtensionAmount', { currencyID: currency })
-        .txt(lineExtension.toFixed(2))
-        .up()
-        .ele('cac:Item')
-          .ele('cbc:Description').txt(line.description).up()
-          .ele('cac:ClassifiedTaxCategory')
-            .ele('cbc:ID').txt(lineTaxCategory).up()
-            .ele('cbc:Percent').txt(taxPercent.toFixed(2)).up()
-            .ele('cac:TaxScheme')
-              .ele('cbc:ID').txt('VAT').up()
-            .up()
-          .up()
-        .up()
-        .ele('cac:Price')
-          .ele('cbc:PriceAmount', { currencyID: currency })
-          .txt(roundedUnitPrice.toFixed(2))
-          .up()
-        .up()
+      .ele('cbc:ID')
+      .txt(lineId)
+      .up()
+      .ele('cbc:InvoicedQuantity', { unitCode: line.unitCode || DEFAULT_UNIT_CODE })
+      .txt(line.quantity.toString())
+      .up()
+      .ele('cbc:LineExtensionAmount', { currencyID: currency })
+      .txt(lineExtension.toFixed(2))
+      .up()
+      .ele('cac:Item')
+      .ele('cbc:Description')
+      .txt(line.description)
+      .up()
+      .ele('cac:ClassifiedTaxCategory')
+      .ele('cbc:ID')
+      .txt(lineTaxCategory)
+      .up()
+      .ele('cbc:Percent')
+      .txt(taxPercent.toFixed(2))
+      .up()
+      .ele('cac:TaxScheme')
+      .ele('cbc:ID')
+      .txt('VAT')
+      .up()
+      .up()
+      .up()
+      .up()
+      .ele('cac:Price')
+      .ele('cbc:PriceAmount', { currencyID: currency })
+      .txt(roundedUnitPrice.toFixed(2))
+      .up()
+      .up()
       .up();
   });
 
@@ -457,4 +507,4 @@ export function buildInvoiceXml(input: InvoiceInput): string {
  */
 export function buildUblInvoiceXml(input: UblInvoiceInput): string {
   return buildInvoiceXml(input);
-} 
+}

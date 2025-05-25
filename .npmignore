@@ -1,0 +1,66 @@
+# Source files
+src/
+tests/
+scripts/
+
+# Build configuration
+tsconfig*.json
+.eslintrc*
+.prettierrc*
+jest.config.*
+
+# Development files
+.env*
+.vscode/
+.idea/
+*.log
+*.tgz
+
+# Test and coverage
+coverage/
+.nyc_output/
+test-results/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.travis.yml
+.circleci/
+azure-pipelines.yml
+
+# Documentation source
+docs/
+*.md
+!README.md
+!CHANGELOG.md
+
+# Package managers
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# OpenAPI specs (development only)
+openapi/
+
+# Token files (security)
+*.secret
+token.* 

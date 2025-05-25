@@ -3,7 +3,7 @@ import { tryCatch } from '../tryCatch';
 
 /**
  * Form encoding utilities for ANAF e-Factura SDK
- * 
+ *
  * Provides consistent form encoding for OAuth and other
  * form-based API requests.
  */
@@ -23,10 +23,10 @@ export function encodeForm(data: Record<string, string | number | boolean>): str
  * @returns Query string (without leading ?)
  */
 export function buildQueryString(obj: Record<string, unknown>): string {
-  return qs.stringify(obj, { 
-    encode: true, 
+  return qs.stringify(obj, {
+    encode: true,
     arrayFormat: 'repeat',
-    skipNulls: true
+    skipNulls: true,
   });
 }
 
@@ -83,19 +83,19 @@ export function buildOAuthAuthorizationUrl(
   }
 ): string {
   const queryParams = new URLSearchParams();
-  
+
   queryParams.append('client_id', params.client_id);
   queryParams.append('response_type', params.response_type);
   queryParams.append('redirect_uri', params.redirect_uri);
-  
+
   if (params.scope) {
     queryParams.append('scope', params.scope);
   }
-  
+
   if (params.token_content_type) {
     queryParams.append('token_content_type', params.token_content_type);
   }
-  
+
   return `${baseUrl}?${queryParams.toString()}`;
 }
 
@@ -105,11 +105,11 @@ export function buildOAuthAuthorizationUrl(
  * @returns Authorization code or null if not found
  */
 export function extractOAuthCode(redirectUrl: string): string | null {
-  const {data: code } = tryCatch(() => {
+  const { data: code } = tryCatch(() => {
     const url = new URL(redirectUrl);
     return url.searchParams.get('code');
   });
-  
+
   return code;
 }
 
@@ -118,16 +118,18 @@ export function extractOAuthCode(redirectUrl: string): string | null {
  * @param redirectUrl Full redirect URL that might contain error
  * @returns Error information or null if no error
  */
-export function extractOAuthError(redirectUrl: string): { error: string; error_description?: string } | null {
-    const {data: error} = tryCatch(() => {
-      const url = new URL(redirectUrl);
-      return url.searchParams.get('error');
-    });
+export function extractOAuthError(
+  redirectUrl: string
+): { error: string; error_description?: string } | null {
+  const { data: error } = tryCatch(() => {
+    const url = new URL(redirectUrl);
+    return url.searchParams.get('error');
+  });
 
-    const {data: error_description} = tryCatch(() => {
-      const url = new URL(redirectUrl);
-      return url.searchParams.get('error_description');
-    });
+  const { data: error_description } = tryCatch(() => {
+    const url = new URL(redirectUrl);
+    return url.searchParams.get('error_description');
+  });
 
-    return {error: error || '', error_description: error_description || undefined};
+  return { error: error || '', error_description: error_description || undefined };
 }

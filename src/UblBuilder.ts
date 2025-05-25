@@ -5,14 +5,14 @@ import { tryCatch } from './tryCatch';
 
 /**
  * UBL XML Builder for ANAF e-Factura
- * 
+ *
  * Handles generation of UBL 2.1 XML invoices that comply with Romanian CIUS-RO
  * specification for ANAF e-Factura.
- * 
+ *
  * @example
  * ```typescript
  * const builder = new UblBuilder();
- * 
+ *
  * const xml = builder.generateInvoiceXml({
  *   invoiceNumber: 'INV-2024-001',
  *   issueDate: new Date(),
@@ -50,16 +50,16 @@ import { tryCatch } from './tryCatch';
 export class UblBuilder {
   /**
    * Generate UBL invoice XML
-   * 
+   *
    * Create a UBL 2.1 XML invoice that complies with Romanian CIUS-RO
    * specification for ANAF e-Factura.
-   * 
+   *
    * @param invoiceData Invoice data
    * @returns UBL XML string ready for upload
    * @throws {AnafValidationError} If invoice data is invalid
    */
   public generateInvoiceXml(invoiceData: InvoiceInput): string {
-    const {data, error} = tryCatch(() => {
+    const { data, error } = tryCatch(() => {
       return buildInvoiceXml(invoiceData);
     });
 
@@ -69,4 +69,4 @@ export class UblBuilder {
 
     return data;
   }
-} 
+}

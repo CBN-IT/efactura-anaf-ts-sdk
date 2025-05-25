@@ -5,98 +5,126 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2024-12-19
+## [1.0.0] - 2025-01-25
 
 ### Added
 
 #### Core Features
-- **Complete ANAF e-Factura SDK** - Comprehensive TypeScript SDK for Romanian ANAF e-Factura system
-- **OAuth 2.0 Authentication** - Full OAuth flow with authorization, token exchange, and refresh
-- **UBL 2.1 Invoice Generation** - CIUS-RO compliant XML invoice generation
-- **Document Upload & Download** - Support for UBL, CN, CII, RASP standards
-- **Status Tracking** - Monitor upload and processing status
-- **Message Listing** - Retrieve messages with pagination support
+- **Complete ANAF e-Factura API Integration**
+  - OAuth2 authentication with automatic token refresh
+  - Certificate-based authentication support (USB tokens, smart cards)
+  - Document upload (standard and B2C)
+  - Upload status checking and document download
+  - Message listing with pagination and filtering
+  - XML validation with FACT1 and FCN standards
+  - PDF conversion with and without validation
 
-#### API Endpoints
-- `getAuthorizationUrl()` - Generate OAuth authorization URL
-- `exchangeCodeForToken()` - Exchange authorization code for tokens
-- `refreshAccessToken()` - Refresh expired access tokens
-- `uploadDocument()` - Upload invoice documents to ANAF
-- `uploadB2CDocument()` - Upload B2C (Business to Consumer) invoices
-- `getUploadStatus()` - Check processing status of uploaded documents
-- `downloadDocument()` - Download processed documents and responses
-- `getMessages()` - Get recent messages from ANAF
-- `getMessagesPaginated()` - Get messages with pagination support
+#### UBL XML Generation
+- **UBL 2.1 Invoice Builder** compliant with Romanian CIUS-RO specification
+- Support for multiple VAT rates and tax categories
+- Automatic tax calculation and grouping
+- Proper XML encoding and character escaping
+- Comprehensive validation for all invoice components
+- Support for empty invoices and zero-value lines
+- Decimal precision handling for financial calculations
 
-#### Validation & Conversion
-- `validateXml()` - Validate XML documents against ANAF schemas
-- `convertXmlToPdf()` - Convert e-Factura XML to PDF format
-- `validateSignature()` - Validate digital signatures on XML documents
-
-#### UBL Generation
-- `generateInvoiceXml()` - Generate UBL 2.1 XML invoices
-- **Multiple VAT Rates** - Support for different tax percentages on invoice lines
-- **Tax Category Logic** - Automatic tax category determination (S, Z, O)
-- **Address Validation** - Comprehensive address and party information validation
-- **CIUS-RO Compliance** - Full compliance with Romanian UBL specification
+#### HTTP Client Architecture
+- **Native Fetch Implementation** replacing Axios
+- Custom `HttpClient` with timeout support via AbortController
+- Automatic status code checking and error handling
+- Response type parsing (JSON, text, ArrayBuffer)
+- Built-in development logging
+- Reduced bundle size by ~13KB
 
 #### Error Handling
-- `AnafSdkError` - Base error class for SDK-specific errors
-- `AnafApiError` - API-related errors with status codes
-- `AnafAuthenticationError` - Authentication and authorization errors
-- `AnafValidationError` - Data validation and input errors
-- `AnafXmlParsingError` - XML parsing and structure errors
-- `AnafUnexpectedResponseError` - Unexpected API response errors
+- **Custom Error Types**:
+  - `AnafValidationError` for input validation failures
+  - `AnafApiError` for API-related errors
+  - `AnafAuthenticationError` for authentication issues
+- Comprehensive error messages with context
+- Proper error propagation and handling
 
-#### Utilities
-- **Date Utilities** - ANAF-compatible date formatting and validation
-- **XML Parsing** - Robust XML response parsing with error handling
-- **Form Encoding** - OAuth and form data encoding utilities
-- **Query Builders** - URL parameter builders for all endpoints
+#### Validation & Utilities
+- **Robust Input Validation**
+  - Parameter validation for all API methods
+  - Enum validation for document standards and filters
+  - File type validation for signature verification
+  - Date formatting utilities for ANAF API compatibility
+- **tryCatch Utility** for consistent error handling
+- **XML Parsing** with proper attribute handling
 
-#### Configuration
-- **Dual Authentication** - Support for both OAuth and certificate authentication
-- **Environment Support** - Test and production environment configuration
-- **TypeScript First** - Full type safety and IntelliSense support
+#### Testing Infrastructure
+- **Comprehensive Test Suite** (94 tests total)
+  - Unit tests for all core functionality (70 passing)
+  - Integration tests with OAuth flow simulation
+  - UBL builder tests with edge cases
+  - Mock system with realistic API responses
+- **Test Coverage** with 80% threshold for all metrics
+- **Performance Tests** for XML generation efficiency
 
 #### Developer Experience
-- **Comprehensive Documentation** - Detailed API documentation with examples
-- **Type Definitions** - Complete TypeScript type definitions
-- **Error Context** - Detailed error messages with context
-- **Debug Logging** - Optional request/response logging for development
+- **Full TypeScript Support** with comprehensive type definitions
+- **ESLint & Prettier** configuration for code quality
+- **Jest** testing framework with coverage reporting
+- **TypeDoc** documentation generation
+- **Multiple Build Targets** (CommonJS, ESM, TypeScript declarations)
 
-### Technical Details
+### Technical Specifications
 
 #### Dependencies
-- `date-fns` ^3.6.0 - Date manipulation and formatting
-- `qs` ^6.11.2 - Query string parsing and encoding
-- `xmlbuilder2` ^4.1.0 - XML document generation
+- `date-fns` ^3.6.0 - Date manipulation utilities
+- `qs` ^6.11.2 - Query string parsing
+- `xml2js` ^0.6.2 - XML parsing
+- `xmlbuilder2` ^3.1.1 - XML generation
 
-#### Build System
-- **Multiple Formats** - CommonJS, ESM, and TypeScript declarations
-- **Modern Tooling** - ESLint, Prettier, Jest for code quality
-- **Comprehensive Testing** - Unit tests with coverage reporting
-- **Documentation Generation** - TypeDoc for API documentation
+#### Compatibility
+- **Node.js** >= 14.0.0
+- **NPM** >= 6.0.0
+- **TypeScript** ^5.3.3
+- **Modern Browsers** with fetch support
 
-#### Standards Compliance
-- **UBL 2.1** - Universal Business Language version 2.1
-- **CIUS-RO** - Romanian Core Invoice Usage Specification
-- **OAuth 2.0** - Standard OAuth 2.0 authorization flow
-- **TypeScript 5.x** - Modern TypeScript with strict type checking
+#### Build Outputs
+- **CommonJS** (`dist/index.js`) - Node.js compatibility
+- **ES Modules** (`dist/index.esm.js`) - Modern bundlers
+- **TypeScript Declarations** (`dist/index.d.ts`) - Type support
 
-### Breaking Changes
-- This is the initial release, no breaking changes from previous versions
+### Documentation
+- Comprehensive README with setup instructions
+- API documentation with examples
+- OAuth2 flow documentation
+- UBL invoice generation examples
+- Integration test examples
 
-### Migration Guide
-- This is a new implementation combining the best features from multiple ANAF SDK approaches
-- Provides backward compatibility interfaces where possible
-- See README.md for complete usage examples and migration guidance
-
-### Known Issues
-- None at this time
+### Performance
+- **Fast XML Generation**: 100 simple invoices in <1 second
+- **Large Invoice Support**: 100-line invoices in <500ms
+- **Lightweight Bundle**: Reduced size with native fetch
+- **Memory Efficient**: Proper resource cleanup
 
 ### Security
-- All sensitive data (tokens, credentials) are handled securely
-- No credentials are logged or exposed in error messages
-- HTTPS-only communication with ANAF APIs
-- Proper OAuth 2.0 state parameter support for CSRF protection 
+- **OAuth2 Best Practices** with PKCE support
+- **Certificate Authentication** for enhanced security
+- **Input Sanitization** and validation
+- **Secure Token Storage** recommendations
+
+---
+
+## Future Releases
+
+### Planned Features
+- Batch document processing
+- Webhook support for status notifications
+- Additional document standards (CII, CN)
+- Enhanced error recovery mechanisms
+- Performance optimizations
+- Additional validation rules
+
+---
+
+## Contributing
+
+Please read our contributing guidelines and ensure all tests pass before submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

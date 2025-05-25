@@ -6,14 +6,9 @@ import {
   PaginatedMessagesParams,
   ListMessagesResponse,
   ValidationResult,
-  DocumentStandardType
+  DocumentStandardType,
 } from './types';
-import {
-  AnafSdkError,
-  AnafApiError,
-  AnafAuthenticationError,
-  AnafValidationError,
-} from './errors';
+import { AnafSdkError, AnafApiError, AnafAuthenticationError, AnafValidationError } from './errors';
 import {
   getBasePath,
   UPLOAD_PATH,
@@ -27,29 +22,34 @@ import {
   buildStatusParams,
   buildDownloadParams,
   buildListMessagesParams,
-  buildPaginatedMessagesParams
+  buildPaginatedMessagesParams,
 } from './constants';
-import { parseXmlResponse, parseJsonResponse, isErrorResponse, extractErrorMessage } from './utils/xmlParser';
+import {
+  parseXmlResponse,
+  parseJsonResponse,
+  isErrorResponse,
+  extractErrorMessage,
+} from './utils/xmlParser';
 import { isValidDaysParameter } from './utils/dateUtils';
 import { HttpClient } from './utils/httpClient';
 import { tryCatch } from './tryCatch';
 
 /**
  * Main client for interacting with ANAF e-Factura API
- * 
+ *
  * Handles all API operations once you have a valid access token.
  * For authentication, use AnafAuthenticator separately.
- * 
+ *
  * @example
  * ```typescript
  * const client = new AnafClient({
  *   vatNumber: 'RO12345678',
  *   testMode: true
  * });
- * 
+ *
  * // Upload document (token obtained from AnafAuthenticator)
  * const uploadResult = await client.uploadDocument(accessToken, xmlContent);
- * 
+ *
  * // Check status
  * const status = await client.getUploadStatus(accessToken, uploadResult.index_incarcare);
  * ```
@@ -61,26 +61,26 @@ export class AnafClient {
 
   /**
    * Create a new ANAF e-Factura client
-   * 
+   *
    * @param config Client configuration
    * @throws {AnafValidationError} If required configuration is missing
    */
   constructor(config: AnafClientConfig) {
     this.validateConfig(config);
-    
+
     this.config = {
       ...config,
       testMode: config.testMode ?? false,
       timeout: config.timeout ?? DEFAULT_TIMEOUT,
       axiosOptions: config.axiosOptions ?? {},
-      basePath: config.basePath ?? ''
+      basePath: config.basePath ?? '',
     };
 
     this.basePath = this.config.basePath || getBasePath('oauth', this.config.testMode);
 
     this.httpClient = new HttpClient({
       baseURL: this.basePath,
-      timeout: this.config.timeout
+      timeout: this.config.timeout,
     });
   }
 
@@ -90,10 +90,10 @@ export class AnafClient {
 
   /**
    * Upload invoice document to ANAF
-   * 
+   *
    * Uploads an XML invoice document (UBL, CN, CII, or RASP format) to ANAF
    * for processing in the e-Factura system.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param xmlContent XML document content as string
    * @param options Upload options (standard, extern, etc.)
@@ -113,12 +113,12 @@ export class AnafClient {
     const params = buildUploadParams(this.config.vatNumber, options);
     const url = `${UPLOAD_PATH}?${params.toString()}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.post<string>(url, xmlContent, {
         headers: {
           'Content-Type': 'text/plain',
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       return parseXmlResponse(response.data);
     });
@@ -132,9 +132,9 @@ export class AnafClient {
 
   /**
    * Upload B2C (Business to Consumer) invoice
-   * 
+   *
    * Simplified upload method for B2C invoices with reduced validation requirements.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param xmlContent XML document content as string
    * @param options Upload options
@@ -153,12 +153,12 @@ export class AnafClient {
     const params = buildUploadParams(this.config.vatNumber, options);
     const url = `${UPLOAD_B2C_PATH}?${params.toString()}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.post<string>(url, xmlContent, {
         headers: {
           'Content-Type': 'text/plain',
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       return parseXmlResponse(response.data);
     });
@@ -176,30 +176,27 @@ export class AnafClient {
 
   /**
    * Get upload status
-   * 
+   *
    * Check the processing status of a previously uploaded document.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param uploadId Upload ID returned from upload operation
    * @returns Current status of the upload
    * @throws {AnafApiError} If status check fails
    * @throws {AnafValidationError} If parameters are invalid
    */
-  public async getUploadStatus(
-    accessToken: string,
-    uploadId: string
-  ): Promise<UploadStatus> {
+  public async getUploadStatus(accessToken: string, uploadId: string): Promise<UploadStatus> {
     this.validateAccessToken(accessToken);
     this.validateUploadId(uploadId);
 
     const params = buildStatusParams(uploadId);
     const url = `${STATUS_MESSAGE_PATH}?${params.toString()}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.get<string>(url, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       return parseXmlResponse(response.data);
     });
@@ -213,33 +210,30 @@ export class AnafClient {
 
   /**
    * Download processed document
-   * 
+   *
    * Download the result of a processed document, which may include:
    * - Validated and signed XML
    * - Error details if processing failed
    * - ZIP archive with multiple files
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param downloadId Download ID from status response
    * @returns Document content as string
    * @throws {AnafApiError} If download fails
    * @throws {AnafValidationError} If parameters are invalid
    */
-  public async downloadDocument(
-    accessToken: string,
-    downloadId: string
-  ): Promise<string> {
+  public async downloadDocument(accessToken: string, downloadId: string): Promise<string> {
     this.validateAccessToken(accessToken);
     this.validateDownloadId(downloadId);
 
     const params = buildDownloadParams(downloadId);
     const url = `${DOWNLOAD_PATH}?${params.toString()}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.get<string>(url, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       return response.data;
     });
@@ -257,9 +251,9 @@ export class AnafClient {
 
   /**
    * Get messages with pagination
-   * 
+   *
    * Retrieve messages with pagination support for large result sets.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param params Paginated message parameters
    * @returns List of messages for the specified page
@@ -282,14 +276,14 @@ export class AnafClient {
     );
     const url = `${LIST_MESSAGES_PAGINATED_PATH}?${queryParams.toString()}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.get(url, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       const data = parseJsonResponse<ListMessagesResponse>(response.data);
-      
+
       if (isErrorResponse(data)) {
         throw new AnafApiError(extractErrorMessage(data) || 'Error retrieving paginated messages');
       }
@@ -306,10 +300,10 @@ export class AnafClient {
 
   /**
    * Get recent messages
-   * 
+   *
    * Retrieve messages from ANAF for the configured VAT number within
    * the specified number of days.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param params Message listing parameters
    * @returns List of messages
@@ -323,21 +317,17 @@ export class AnafClient {
     this.validateAccessToken(accessToken);
     this.validateListMessagesParams(params);
 
-    const queryParams = buildListMessagesParams(
-      this.config.vatNumber,
-      params.zile,
-      params.filtru
-    );
+    const queryParams = buildListMessagesParams(this.config.vatNumber, params.zile, params.filtru);
     const url = `${LIST_MESSAGES_PATH}?${queryParams.toString()}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.get(url, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       const data = parseJsonResponse<ListMessagesResponse>(response.data);
-      
+
       if (isErrorResponse(data)) {
         throw new AnafApiError(extractErrorMessage(data) || 'Error retrieving messages');
       }
@@ -358,10 +348,10 @@ export class AnafClient {
 
   /**
    * Validate XML document
-   * 
+   *
    * Validate an XML document against ANAF schemas without uploading it
    * to the e-Factura system.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param xmlContent XML document to validate
    * @param standard Document standard (FACT1 or FCN)
@@ -379,21 +369,20 @@ export class AnafClient {
 
     const url = `/validare/${standard}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.post(url, xmlContent, {
         headers: {
           'Content-Type': 'text/plain',
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
-      const responseText = typeof response.data === 'string' 
-        ? response.data 
-        : JSON.stringify(response.data);
+      const responseText =
+        typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
 
       return {
         valid: !responseText.toLowerCase().includes('error'),
         details: responseText,
-        info: `Validation performed using ${standard} standard`
+        info: `Validation performed using ${standard} standard`,
       };
     });
 
@@ -406,10 +395,10 @@ export class AnafClient {
 
   /**
    * Validate digital signature
-   * 
+   *
    * Validate the digital signature of an XML document and signature file.
    * Accepts either File objects (browser) or Buffer objects (Node.js).
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param xmlFile XML document file (File in browser, Buffer in Node.js)
    * @param signatureFile Signature file (File in browser, Buffer in Node.js)
@@ -430,7 +419,7 @@ export class AnafClient {
     const url = `/api/validate/signature`;
 
     const formData = new FormData();
-    
+
     // Handle File objects (browser) vs Buffer objects (Node.js)
     if (typeof File !== 'undefined' && xmlFile instanceof File) {
       formData.append('file', xmlFile);
@@ -458,17 +447,17 @@ export class AnafClient {
       throw new AnafValidationError('Invalid signature file type. Expected File or Buffer');
     }
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.post(url, formData, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
       const responseData = response.data;
 
       return {
         valid: responseData.msg?.includes('validate cu succes') || false,
-        details: responseData.msg || JSON.stringify(responseData)
+        details: responseData.msg || JSON.stringify(responseData),
       };
     });
 
@@ -481,9 +470,9 @@ export class AnafClient {
 
   /**
    * Convert XML to PDF with validation
-   * 
+   *
    * Convert an e-Factura XML document to PDF format with validation.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param xmlContent XML document to convert
    * @param standard Document standard (FACT1 or FCN)
@@ -501,12 +490,12 @@ export class AnafClient {
 
     const url = `/transformare/${standard}`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.post(url, xmlContent, {
         headers: {
           'Content-Type': 'text/plain',
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       // The HttpClient should return ArrayBuffer for PDF content type
@@ -527,10 +516,10 @@ export class AnafClient {
 
   /**
    * Convert XML to PDF without validation
-   * 
+   *
    * Convert an e-Factura XML document to PDF format without validation.
    * Note: Without validation, ANAF does not guarantee the correctness of the generated PDF.
-   * 
+   *
    * @param accessToken Valid OAuth access token
    * @param xmlContent XML document to convert
    * @param standard Document standard (FACT1 or FCN)
@@ -548,12 +537,12 @@ export class AnafClient {
 
     const url = `/transformare/${standard}/DA`;
 
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       const response = await this.httpClient.post(url, xmlContent, {
         headers: {
           'Content-Type': 'text/plain',
-          'Authorization': `Bearer ${accessToken}`
-        }
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       // The HttpClient should return ArrayBuffer for PDF content type
@@ -664,4 +653,4 @@ export class AnafClient {
       throw new AnafSdkError(`${context}: ${error.message || 'Unknown error'}`);
     }
   }
-} 
+}

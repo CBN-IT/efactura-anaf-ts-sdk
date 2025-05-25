@@ -14,7 +14,7 @@ export interface AnafAuthConfig {
 
 /**
  * Configuration for ANAF e-Factura client
- * 
+ *
  * @example
  * ```typescript
  * const config: AnafClientConfig = {
@@ -292,4 +292,4 @@ export interface ApiResponse<T = any> {
   error?: string;
   /** Additional metadata */
   metadata?: Record<string, any>;
-} 
+}
