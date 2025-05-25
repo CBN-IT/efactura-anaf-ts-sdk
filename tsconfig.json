@@ -12,6 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "tests/auth.test.ts"],
+  "include": ["src/**/*", "tests/auth.integration.test.ts"],
   "exclude": ["node_modules", "dist", "tests"]
 } 
