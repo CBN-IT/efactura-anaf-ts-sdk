@@ -154,10 +154,10 @@ export class HttpClient {
 
     if (status === 401 || status === 403) {
       throw new AnafAuthenticationError(message);
-    } else if (status >= 400 && status < 500) {
-      throw new AnafValidationError(message);
     } else if (status === 404) {
       throw new AnafNotFoundError(message);
+    } else if (status >= 400 && status < 500) {
+      throw new AnafValidationError(message);
     } else {
       throw new AnafApiError(message, status, errorText);
     }
