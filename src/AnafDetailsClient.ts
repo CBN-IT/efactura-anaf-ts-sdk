@@ -14,8 +14,8 @@
  * // Fetch company data by VAT code
  * const result = await detailsClient.getCompanyData('RO12345678');
  * if (result.success) {
- *   console.log('Company:', result.data.name);
- *   console.log('VAT registered:', result.data.scpTva);
+ *   console.log('Company:', result.data[0].name);
+ *   console.log('VAT registered:', result.data[0].scpTva);
  * }
  *
  * // Validate VAT code format
@@ -25,17 +25,15 @@
 
 import { HttpClient } from './utils/httpClient';
 import { tryCatch } from './tryCatch';
-import { AnafValidationError, AnafApiError, AnafNotFoundError } from './errors';
+import { AnafNotFoundError } from './errors';
 import { AnafDetailsConfig, AnafCompanyData, AnafCompanyResult, AnafRequestPayload, AnafApiResponse } from './types';
-import type { HttpResponse } from './utils/httpClient';
 
 /**
  * Default configuration for ANAF Details client
  */
 const DEFAULT_CONFIG: Required<AnafDetailsConfig> = {
   timeout: 30000,
-  enableCache: true,
-  cacheTtl: 300000, // 5 minutes
+  url: 'https://webservicesp.anaf.ro/api/PlatitorTvaRest/v9/tva',
 };
 
 /**
@@ -44,7 +42,6 @@ const DEFAULT_CONFIG: Required<AnafDetailsConfig> = {
 export class AnafDetailsClient {
   private readonly httpClient: HttpClient;
   private readonly config: Required<AnafDetailsConfig>;
-  private readonly cache: Map<string, { data: AnafCompanyResult; timestamp: number }>;
 
   /**
    * Create a new ANAF Details client
@@ -56,7 +53,6 @@ export class AnafDetailsClient {
     this.httpClient = new HttpClient({
       timeout: this.config.timeout,
     });
-    this.cache = new Map();
   }
 
   /**
@@ -92,70 +88,6 @@ export class AnafDetailsClient {
     }
 
     return cuiNumber;
-  }
-
-  /**
-   * Get cache key for a CUI number
-   *
-   * @param cui - CUI number
-   * @returns Cache key
-   */
-  private getCacheKey(cui: number): string {
-    return `anaf_company_${cui}`;
-  }
-
-  /**
-   * Check if cached data is still valid
-   *
-   * @param timestamp - Cache timestamp
-   * @returns Whether cache is valid
-   */
-  private isCacheValid(timestamp: number): boolean {
-    return Date.now() - timestamp < this.config.cacheTtl;
-  }
-
-  /**
-   * Get cached company data if available and valid
-   *
-   * @param cui - CUI number
-   * @returns Cached result or null
-   */
-  private getCachedData(cui: number): AnafCompanyResult | null {
-    if (!this.config.enableCache) {
-      return null;
-    }
-
-    const cacheKey = this.getCacheKey(cui);
-    const cached = this.cache.get(cacheKey);
-
-    if (cached && this.isCacheValid(cached.timestamp)) {
-      return cached.data;
-    }
-
-    // Remove expired cache entry
-    if (cached) {
-      this.cache.delete(cacheKey);
-    }
-
-    return null;
-  }
-
-  /**
-   * Cache company data
-   *
-   * @param cui - CUI number
-   * @param data - Company result to cache
-   */
-  private setCachedData(cui: number, data: AnafCompanyResult): void {
-    if (!this.config.enableCache) {
-      return;
-    }
-
-    const cacheKey = this.getCacheKey(cui);
-    this.cache.set(cacheKey, {
-      data,
-      timestamp: Date.now(),
-    });
   }
 
   /**
@@ -200,7 +132,7 @@ export class AnafDetailsClient {
   }
 
   /**
-   * Fetch company data from ANAF API
+   * Get company data for a single VAT code
    *
    * @param vatCode - The VAT code (CUI/CIF) to search for
    * @returns Promise with company data or error
@@ -209,47 +141,76 @@ export class AnafDetailsClient {
    * ```typescript
    * const result = await client.getCompanyData('RO12345678');
    * if (result.success) {
-   *   console.log('Company name:', result.data.name);
-   *   console.log('Address:', result.data.address);
-   *   console.log('VAT registered:', result.data.scpTva);
+   *   console.log('Company name:', result.data[0].name);
+   *   console.log('Address:', result.data[0].address);
+   *   console.log('VAT registered:', result.data[0].scpTva);
    * } else {
    *   console.error('Error:', result.error);
    * }
    * ```
    */
   async getCompanyData(vatCode: string): Promise<AnafCompanyResult> {
+    return this.batchGetCompanyData([vatCode]);
+  }
+
+  /**
+   * Batch fetch company data for multiple VAT codes
+   *
+   * @param vatCodes - Array of VAT codes to fetch
+   * @returns Promise with company data or error
+   *
+   * @example
+   * ```typescript
+   * const result = await client.batchGetCompanyData(['RO12345678', 'RO87654321']);
+   * if (result.success) {
+   *   result.data.forEach((company, index) => {
+   *     console.log(`Company ${index + 1}:`, company.name);
+   *   });
+   * } else {
+   *   console.error('Error:', result.error);
+   * }
+   * ```
+   */
+  async batchGetCompanyData(vatCodes: string[]): Promise<AnafCompanyResult> {
     // Basic validation
-    if (!vatCode || vatCode.trim().length < 2) {
-      return { success: false, error: 'Invalid VAT code provided.' };
-    }
-
-    // Extract CUI number
-    const cuiNumber = this.extractCuiNumber(vatCode);
-    if (!cuiNumber) {
-      return {
-        success: false,
-        error: 'Invalid CUI format. Please provide the numeric part.',
-      };
-    }
-
-    // Check cache first
-    const cachedResult = this.getCachedData(cuiNumber);
-    if (cachedResult) {
-      return cachedResult;
+    if (!vatCodes || vatCodes.length === 0) {
+      return { success: false, error: 'No VAT codes provided.' };
     }
 
     const requestDate = this.getCurrentDateString();
-    const requestPayload: AnafRequestPayload[] = [
-      {
+    const validatedPayload: AnafRequestPayload[] = [];
+    const invalidCodes: string[] = [];
+
+    // Validate each VAT code and build payload
+    for (const vatCode of vatCodes) {
+      if (!vatCode || vatCode.trim().length < 2) {
+        invalidCodes.push(vatCode);
+        continue;
+      }
+
+      const cuiNumber = this.extractCuiNumber(vatCode);
+      if (!cuiNumber) {
+        invalidCodes.push(vatCode);
+        continue;
+      }
+
+      validatedPayload.push({
         cui: cuiNumber,
         data: requestDate,
-      },
-    ];
+      });
+    }
 
-    console.log(`ANAF Details: Calling ANAF API for CUI: ${cuiNumber}, Date: ${requestDate}`);
+    if (validatedPayload.length === 0) {
+      return {
+        success: false,
+        error: `All provided VAT codes are invalid: ${invalidCodes.join(', ')}`,
+      };
+    }
+
+    console.log(`ANAF Details: Calling ANAF API for ${validatedPayload.length} CUIs, Date: ${requestDate}`);
 
     const { data, error } = await tryCatch(
-      this.httpClient.post<AnafApiResponse>('https://webservicesp.anaf.ro/api/PlatitorTvaRest/v9/tva', requestPayload, {
+      this.httpClient.post<AnafApiResponse>(this.config.url, validatedPayload, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -257,47 +218,38 @@ export class AnafDetailsClient {
     );
 
     if (error) {
-      console.error(`Error calling ANAF API for CUI ${cuiNumber}:`, error);
+      console.warn(`Error calling ANAF API for batch request:`, error);
       if (error instanceof AnafNotFoundError) {
-        const notFoundError = {
-          success: false as const,
-          error: 'Company not found for the provided VAT code.',
+        return {
+          success: false,
+          error: 'Companies not found for the provided VAT codes.',
         };
-        this.setCachedData(cuiNumber, notFoundError);
-        return notFoundError;
       }
 
       // Distinguish network errors from other errors
       if (error.message?.includes('fetch') || error.message?.toLowerCase().includes('network')) {
-        const networkError = {
-          success: false as const,
+        return {
+          success: false,
           error: 'Network error: Could not connect to ANAF service.',
         };
-        this.setCachedData(cuiNumber, networkError);
-        return networkError;
       }
 
-      const apiError = {
-        success: false as const,
+      return {
+        success: false,
         error: 'An unexpected error occurred while contacting the ANAF service.',
       };
-      this.setCachedData(cuiNumber, apiError);
-      return apiError;
     }
 
     if (!data) {
-      const noResultError = {
-        success: false as const,
+      return {
+        success: false,
         error: 'No response received from ANAF API.',
       };
-      this.setCachedData(cuiNumber, noResultError);
-      return noResultError;
     }
 
-    console.log('ANAF API successful response for CUI:', cuiNumber);
+    console.log('ANAF API successful response for batch request');
 
-    const transformedResult = this.transformResponse(data.data, cuiNumber);
-    this.setCachedData(cuiNumber, transformedResult);
+    const transformedResult = this.transformResponse(data.data, 0); // CUI not needed for batch
 
     return transformedResult;
   }
@@ -322,76 +274,5 @@ export class AnafDetailsClient {
     const cuiNumber = parseInt(cleanVatCode, 10);
 
     return !isNaN(cuiNumber) && cleanVatCode.length >= 2 && cleanVatCode.length <= 10 && cuiNumber > 0;
-  }
-
-  /**
-   * Clear the internal cache
-   *
-   * @example
-   * ```typescript
-   * client.clearCache();
-   * ```
-   */
-  clearCache(): void {
-    this.cache.clear();
-  }
-
-  /**
-   * Get cache statistics
-   *
-   * @returns Cache statistics
-   *
-   * @example
-   * ```typescript
-   * const stats = client.getCacheStats();
-   * console.log(`Cache entries: ${stats.size}`);
-   * ```
-   */
-  getCacheStats(): { size: number; enabled: boolean } {
-    return {
-      size: this.cache.size,
-      enabled: this.config.enableCache,
-    };
-  }
-
-  /**
-   * Batch fetch company data for multiple VAT codes
-   *
-   * @param vatCodes - Array of VAT codes to fetch
-   * @param options - Batch options
-   * @returns Promise with array of results
-   *
-   * @example
-   * ```typescript
-   * const results = await client.batchGetCompanyData(['RO12345678', 'RO87654321']);
-   * results.forEach((result, index) => {
-   *   if (result.success) {
-   *     console.log(`Company ${index + 1}:`, result.data.name);
-   *   }
-   * });
-   * ```
-   */
-  async batchGetCompanyData(
-    vatCodes: string[],
-    options: { concurrency?: number; delayMs?: number } = {}
-  ): Promise<AnafCompanyResult[]> {
-    const { concurrency = 3, delayMs = 1000 } = options;
-    const results: AnafCompanyResult[] = [];
-
-    // Process in batches to avoid overwhelming the API
-    for (let i = 0; i < vatCodes.length; i += concurrency) {
-      const batch = vatCodes.slice(i, i + concurrency);
-      const batchPromises = batch.map((vatCode) => this.getCompanyData(vatCode));
-
-      const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults);
-
-      // Add delay between batches (except for the last batch)
-      if (i + concurrency < vatCodes.length && delayMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-
-    return results;
   }
 }

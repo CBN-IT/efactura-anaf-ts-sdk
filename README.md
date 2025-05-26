@@ -130,18 +130,18 @@ const xml = builder.generateInvoiceXml({
 import { AnafDetailsClient } from 'efactura-ts-sdk';
 
 const detailsClient = new AnafDetailsClient({
-  enableCache: true, // Cache responses for 5 minutes
   timeout: 30000,
+  url: 'https://webservicesp.anaf.ro/api/PlatitorTvaRest/v9/tva', // Optional: custom ANAF API URL
 });
 
-// Fetch company data by VAT code
+// Fetch company data by VAT code (single company)
 const result = await detailsClient.getCompanyData('RO12345678');
 if (result.success) {
-  console.log('Company:', result.data.name);
-  console.log('Address:', result.data.address);
-  console.log('VAT registered:', result.data.scpTva);
-  console.log('Registration number:', result.data.registrationNumber);
-  console.log('Phone:', result.data.contactPhone);
+  console.log('Company:', result.data[0].name);
+  console.log('Address:', result.data[0].address);
+  console.log('VAT registered:', result.data[0].scpTva);
+  console.log('Registration number:', result.data[0].registrationNumber);
+  console.log('Phone:', result.data[0].contactPhone);
 } else {
   console.error('Error:', result.error);
 }
@@ -150,24 +150,63 @@ if (result.success) {
 const isValid = await detailsClient.isValidVatCode('RO12345678');
 console.log('Valid format:', isValid);
 
-// Batch fetch multiple companies
-const results = await detailsClient.batchGetCompanyData(['RO12345678', 'RO87654321', 'RO11111111'], {
-  concurrency: 3, // Process 3 at a time
-  delayMs: 1000, // 1 second delay between batches
-});
+// Batch fetch multiple companies (single API call)
+const batchResult = await detailsClient.batchGetCompanyData(['RO12345678', 'RO87654321', 'RO11111111']);
+if (batchResult.success) {
+  batchResult.data.forEach((company, index) => {
+    console.log(`Company ${index + 1}:`, company.name);
+    console.log(`VAT registered:`, company.scpTva);
+  });
+} else {
+  console.error('Batch error:', batchResult.error);
+}
 
-results.forEach((result, index) => {
-  if (result.success) {
-    console.log(`Company ${index + 1}:`, result.data.name);
-  } else {
-    console.log(`Company ${index + 1} error:`, result.error);
-  }
+// Configuration options
+const customClient = new AnafDetailsClient({
+  timeout: 60000, // 60 second timeout
+  url: 'https://custom-anaf-proxy.example.com/api/tva', // Custom endpoint (e.g., proxy server)
 });
-
-// Cache management
-console.log('Cache stats:', detailsClient.getCacheStats());
-detailsClient.clearCache(); // Clear all cached data
 ```
+
+## AnafDetailsClient Configuration
+
+The `AnafDetailsClient` supports the following configuration options:
+
+| Option    | Type     | Default                                                     | Description                     |
+| --------- | -------- | ----------------------------------------------------------- | ------------------------------- |
+| `timeout` | `number` | `30000`                                                     | Request timeout in milliseconds |
+| `url`     | `string` | `'https://webservicesp.anaf.ro/api/PlatitorTvaRest/v9/tva'` | ANAF API endpoint URL           |
+
+### Configuration Examples
+
+```typescript
+// Default configuration
+const client = new AnafDetailsClient();
+
+// Custom timeout
+const clientWithTimeout = new AnafDetailsClient({
+  timeout: 60000, // 60 seconds
+});
+
+// Custom API endpoint (useful for proxy servers or testing)
+const clientWithCustomUrl = new AnafDetailsClient({
+  url: 'https://your-proxy.example.com/anaf-api',
+  timeout: 45000,
+});
+
+// Minimal configuration
+const minimalClient = new AnafDetailsClient({
+  timeout: 15000, // Fast timeout for quick responses
+});
+```
+
+### Use Cases for Custom URL
+
+- **Proxy Server**: Route requests through your own proxy for logging/monitoring
+- **Load Balancer**: Distribute requests across multiple ANAF endpoints
+- **Testing**: Point to a mock server during development
+- **Regional Endpoints**: Use different ANAF regional servers if available
+- **Corporate Firewall**: Route through approved corporate gateways
 
 ## Complete Example
 
@@ -215,13 +254,13 @@ const xml = builder.generateInvoiceXml({
     },
   },
   customer: {
-    registrationName: customerData.data.name,
-    companyId: customerData.data.vatCode,
-    vatNumber: customerData.data.vatCode,
+    registrationName: customerData.data[0].name,
+    companyId: customerData.data[0].vatCode,
+    vatNumber: customerData.data[0].vatCode,
     address: {
-      street: customerData.data.address,
+      street: customerData.data[0].address,
       city: 'Cluj-Napoca', // Parse from address if needed
-      postalZone: customerData.data.postalCode || '400001',
+      postalZone: customerData.data[0].postalCode || '400001',
     },
   },
   lines: [
@@ -229,7 +268,7 @@ const xml = builder.generateInvoiceXml({
       description: 'Consulting Services',
       quantity: 1,
       unitPrice: 1000,
-      taxPercent: customerData.data.scpTva ? 19 : 0, // Apply VAT if customer is VAT registered
+      taxPercent: customerData.data[0].scpTva ? 19 : 0, // Apply VAT if customer is VAT registered
     },
   ],
   isSupplierVatPayer: true,

@@ -304,10 +304,8 @@ export interface ApiResponse<T = any> {
 export interface AnafDetailsConfig {
   /** Request timeout in milliseconds (default: 30000) */
   timeout?: number;
-  /** Whether to cache responses (default: true) */
-  enableCache?: boolean;
-  /** Cache TTL in milliseconds (default: 300000 - 5 minutes) */
-  cacheTtl?: number;
+  /** ANAF API URL */
+  url?: string;
 }
 
 /**
