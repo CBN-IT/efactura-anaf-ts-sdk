@@ -11,7 +11,20 @@ module.exports = {
     'prettier',
   ],
   rules: {
-    'prettier/prettier': 'error',
+    'prettier/prettier': [
+      'error',
+      {
+        printWidth: 120,
+        tabWidth: 2,
+        useTabs: false,
+        semi: true,
+        singleQuote: true,
+        quoteProps: 'as-needed',
+        trailingComma: 'es5',
+        bracketSpacing: true,
+        arrowParens: 'always',
+      },
+    ],
     '@typescript-eslint/no-unused-vars': 'off',
     'no-unused-vars': 'off',
     'no-redeclare': 'off',

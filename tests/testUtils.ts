@@ -11,7 +11,7 @@ import { tryCatch } from '../src/tryCatch';
 export const mockTestData = {
   vatNumber: 'RO12345678',
   accessToken: 'mock_access_token_12345',
-  
+
   // Mock invoice data for testing
   invoiceData: {
     invoiceNumber: `TEST-${Date.now()}`,
@@ -23,8 +23,8 @@ export const mockTestData = {
       address: {
         street: 'Str. Test 1',
         city: 'Bucharest',
-        postalZone: '010101'
-      }
+        postalZone: '010101',
+      },
     },
     customer: {
       registrationName: 'Test Customer SRL',
@@ -32,36 +32,36 @@ export const mockTestData = {
       address: {
         street: 'Str. Customer 2',
         city: 'Cluj-Napoca',
-        postalZone: '400001'
-      }
+        postalZone: '400001',
+      },
     },
     lines: [
       {
         description: 'Test Product/Service',
         quantity: 1,
         unitPrice: 100,
-        taxPercent: 19
-      }
+        taxPercent: 19,
+      },
     ],
-    isSupplierVatPayer: true
+    isSupplierVatPayer: true,
   } as InvoiceInput,
 
   // Mock XML responses
   mockXmlResponses: {
     uploadSuccess: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <header xmlns="mfp:anaf:dgti:spv:respUploadFisier:v1" dateResponse="202312011200" ExecutionStatus="0" index_incarcare="12345"/>`,
-    
+
     uploadError: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <header xmlns="mfp:anaf:dgti:spv:respUploadFisier:v1" dateResponse="202312011200" ExecutionStatus="1">
     <Errors errorMessage="Invalid XML format"/>
 </header>`,
-    
+
     statusSuccess: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1" stare="ok" id_descarcare="67890"/>`,
-    
+
     statusInProgress: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1" stare="in prelucrare"/>`,
-    
+
     statusError: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1" stare="nok" id_descarcare="67890"/>`,
   },
@@ -76,7 +76,7 @@ export const mockTestData = {
           data_creare: '202312010800',
           detalii: 'Test message 1',
           id_solicitare: '123',
-          cif: 'RO12345678'
+          cif: 'RO12345678',
         },
         {
           id: '2',
@@ -84,36 +84,36 @@ export const mockTestData = {
           data_creare: '202312011000',
           detalii: 'Test error message',
           id_solicitare: '124',
-          cif: 'RO12345678'
-        }
+          cif: 'RO12345678',
+        },
       ],
       serial: 'TEST123',
       titlu: 'Test Messages',
-      numar_total_inregistrari: 2
+      numar_total_inregistrari: 2,
     },
 
     messagesEmpty: {
       mesaje: [],
       serial: 'TEST456',
       titlu: 'No Messages',
-      eroare: 'Nu exista mesaje in intervalul selectat'
+      eroare: 'Nu exista mesaje in intervalul selectat',
     },
 
     validationSuccess: {
       stare: 'ok',
-      trace_id: 'test-trace-123'
+      trace_id: 'test-trace-123',
     },
 
     validationError: {
       stare: 'nok',
       Messages: [
         {
-          message: 'E: validari globale SCHEMATRON eroare: [BR-CO-09] Invalid VAT identifier format'
-        }
+          message: 'E: validari globale SCHEMATRON eroare: [BR-CO-09] Invalid VAT identifier format',
+        },
       ],
-      trace_id: 'test-trace-456'
-    }
-  }
+      trace_id: 'test-trace-456',
+    },
+  },
 };
 
 /**
@@ -123,31 +123,31 @@ export class TestTokenManager {
   private static tokenFilePath = path.join(process.cwd(), 'token.secret');
 
   static async loadTokens(): Promise<(TokenResponse & { obtained_at?: number; expires_at?: number }) | null> {
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       if (fs.existsSync(this.tokenFilePath)) {
         const tokenData = fs.readFileSync(this.tokenFilePath, 'utf8');
         return JSON.parse(tokenData);
-    }});
+      }
+    });
 
     if (error) {
       console.log('Could not load tokens:', error);
     }
     return data;
-    return null;
   }
 
   static async saveTokens(tokens: TokenResponse): Promise<void> {
     const tokenData = {
       ...tokens,
       obtained_at: Date.now(),
-      expires_at: Date.now() + (tokens.expires_in * 1000)
+      expires_at: Date.now() + tokens.expires_in * 1000,
     };
-    
+
     fs.writeFileSync(this.tokenFilePath, JSON.stringify(tokenData, null, 2));
   }
 
   static async deleteTokens(): Promise<void> {
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       if (fs.existsSync(this.tokenFilePath)) {
         fs.unlinkSync(this.tokenFilePath);
         console.log('🗑️ Tokens deleted');
@@ -162,21 +162,21 @@ export class TestTokenManager {
     if (!tokens.expires_at) {
       return true;
     }
-    
+
     // Consider token expired 5 minutes before actual expiration
     const expirationBuffer = 5 * 60 * 1000; // 5 minutes
-    return Date.now() >= (tokens.expires_at - expirationBuffer);
+    return Date.now() >= tokens.expires_at - expirationBuffer;
   }
 
   static hasValidTokens(): boolean {
-    const {data, error} = tryCatch(() => {
+    const { data, error } = tryCatch(() => {
       const tokens = this.loadTokens();
       return tokens !== null && !this.isTokenExpired(tokens as any);
     });
     if (error) {
       return false;
     }
-    
+
     return data;
   }
 }
@@ -189,7 +189,7 @@ export class MockHttpClient {
   public get = jest.fn();
   public interceptors = {
     request: { use: jest.fn() },
-    response: { use: jest.fn() }
+    response: { use: jest.fn() },
   };
 
   reset() {
@@ -199,25 +199,25 @@ export class MockHttpClient {
 
   mockUploadSuccess(uploadId: string = '12345') {
     this.post.mockResolvedValue({
-      data: mockTestData.mockXmlResponses.uploadSuccess.replace('12345', uploadId)
+      data: mockTestData.mockXmlResponses.uploadSuccess.replace('12345', uploadId),
     });
   }
 
   mockUploadError(errorMessage: string = 'Invalid XML format') {
     this.post.mockResolvedValue({
-      data: mockTestData.mockXmlResponses.uploadError.replace('Invalid XML format', errorMessage)
+      data: mockTestData.mockXmlResponses.uploadError.replace('Invalid XML format', errorMessage),
     });
   }
 
   mockStatusSuccess(downloadId: string = '67890') {
     this.get.mockResolvedValue({
-      data: mockTestData.mockXmlResponses.statusSuccess.replace('67890', downloadId)
+      data: mockTestData.mockXmlResponses.statusSuccess.replace('67890', downloadId),
     });
   }
 
   mockStatusInProgress() {
     this.get.mockResolvedValue({
-      data: mockTestData.mockXmlResponses.statusInProgress
+      data: mockTestData.mockXmlResponses.statusInProgress,
     });
   }
 
@@ -225,34 +225,34 @@ export class MockHttpClient {
     const response = { ...mockTestData.mockJsonResponses.messagesSuccess };
     response.mesaje = response.mesaje.slice(0, messageCount);
     response.numar_total_inregistrari = messageCount;
-    
+
     this.get.mockResolvedValue({ data: response });
   }
 
   mockMessagesEmpty() {
     this.get.mockResolvedValue({
-      data: mockTestData.mockJsonResponses.messagesEmpty
+      data: mockTestData.mockJsonResponses.messagesEmpty,
     });
   }
 
   mockValidationSuccess() {
     this.post.mockResolvedValue({
-      data: mockTestData.mockJsonResponses.validationSuccess
+      data: mockTestData.mockJsonResponses.validationSuccess,
     });
   }
 
   mockValidationError() {
     this.post.mockResolvedValue({
-      data: mockTestData.mockJsonResponses.validationError
+      data: mockTestData.mockJsonResponses.validationError,
     });
   }
 
   mockPdfConversion(size: number = 1024) {
     const pdfBuffer = Buffer.alloc(size);
     pdfBuffer.write('%PDF-1.4', 0, 'ascii'); // Valid PDF header
-    
+
     this.post.mockResolvedValue({
-      data: pdfBuffer
+      data: pdfBuffer,
     });
   }
 
@@ -265,7 +265,7 @@ export class MockHttpClient {
     const error = new Error(message);
     (error as any).isAxiosError = true;
     (error as any).response = { status, data: message };
-    
+
     this.post.mockRejectedValue(error);
     this.get.mockRejectedValue(error);
   }
@@ -291,13 +291,13 @@ export const testEnvironment = {
     if (!this.hasOAuthCredentials()) {
       throw new Error('OAuth credentials not available for integration tests');
     }
-    
+
     return {
       clientId: process.env.ANAF_CLIENT_ID!,
       clientSecret: process.env.ANAF_CLIENT_SECRET!,
-      redirectUri: process.env.ANAF_CALLBACK_URL!
+      redirectUri: process.env.ANAF_CALLBACK_URL!,
     };
-  }
+  },
 };
 
 /**
@@ -339,7 +339,7 @@ export const testFileUtils = {
 
   createMockBuffer(content: string): Buffer {
     return Buffer.from(content, 'utf8');
-  }
+  },
 };
 
 /**
@@ -362,7 +362,7 @@ export const testAssertions = {
   expectValidMessagesResult(result: any) {
     expect(result).toBeDefined();
     expect(result.titlu).toBeDefined();
-    
+
     if (result.mesaje && result.mesaje.length > 0) {
       const message = result.mesaje[0];
       expect(message.id).toBeDefined();
@@ -380,20 +380,20 @@ export const testAssertions = {
   expectValidPdfBuffer(buffer: any) {
     expect(buffer).toBeInstanceOf(Buffer);
     expect(buffer.length).toBeGreaterThan(0);
-    
+
     // Check for PDF header if it's a real PDF
     const header = buffer.toString('ascii', 0, 4);
     if (header === '%PDF') {
       expect(header).toBe('%PDF');
     }
-  }
+  },
 };
 
 /**
  * Delay utility for tests
  */
 export const delay = (ms: number): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 /**
@@ -415,5 +415,5 @@ export const testDataGenerators = {
 
   randomDownloadId(): string {
     return Math.floor(Math.random() * 1000000).toString();
-  }
-}; 
+  },
+};

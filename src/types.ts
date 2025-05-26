@@ -17,13 +17,13 @@ export interface AnafAuthConfig {
  *
  * @example
  * ```typescript
- * const config: AnafClientConfig = {
+ * const config: AnafEfacturaClientConfig = {
  *   vatNumber: 'RO12345678',
  *   testMode: true
  * };
  * ```
  */
-export interface AnafClientConfig {
+export interface AnafEfacturaClientConfig {
   /** Romanian VAT number (CIF) in format RO12345678 */
   vatNumber: string;
   /** Whether to use test environment (default: false) */
@@ -292,4 +292,95 @@ export interface ApiResponse<T = any> {
   error?: string;
   /** Additional metadata */
   metadata?: Record<string, any>;
+}
+
+/**
+ * ANAF Company Details API Types
+ */
+
+/**
+ * Configuration for ANAF Details client
+ */
+export interface AnafDetailsConfig {
+  /** Request timeout in milliseconds (default: 30000) */
+  timeout?: number;
+  /** Whether to cache responses (default: true) */
+  enableCache?: boolean;
+  /** Cache TTL in milliseconds (default: 300000 - 5 minutes) */
+  cacheTtl?: number;
+}
+
+/**
+ * Company data from ANAF public API
+ */
+export interface AnafCompanyData {
+  /** Company name */
+  name: string;
+  /** VAT code (CUI/CIF) */
+  vatCode: string;
+  /** Trade registry number */
+  registrationNumber: string;
+  /** Company address */
+  address: string;
+  /** Postal code */
+  postalCode: string | null;
+  /** Contact phone */
+  contactPhone: string;
+  /** Whether company is VAT registered */
+  scpTva: boolean;
+}
+
+/**
+ * Result from ANAF company lookup
+ */
+export interface AnafCompanyResult {
+  /** Whether the lookup was successful */
+  success: boolean;
+  /** Company data if found */
+  data?: AnafCompanyData[];
+  /** Error message if lookup failed */
+  error?: string;
+}
+
+/**
+ * Internal ANAF API request payload
+ */
+export interface AnafRequestPayload {
+  cui: number;
+  data: string;
+}
+
+/**
+ * Internal ANAF API company info structure
+ */
+export interface AnafCompanyInfo {
+  cui: number;
+  denumire: string;
+  adresa: string;
+  nrRegCom: string;
+  telefon: string;
+  codPostal: string | null;
+}
+
+/**
+ * Internal ANAF API VAT registration info
+ */
+export interface AnafScpTvaInfo {
+  scpTVA: boolean;
+}
+
+/**
+ * Internal ANAF API found company structure
+ */
+export interface AnafFoundCompany {
+  date_generale: AnafCompanyInfo;
+  inregistrare_scop_Tva: AnafScpTvaInfo;
+}
+
+/**
+ * Internal ANAF API response structure
+ */
+export interface AnafApiResponse {
+  found?: AnafFoundCompany[];
+  notFound?: { cui: number }[];
 }

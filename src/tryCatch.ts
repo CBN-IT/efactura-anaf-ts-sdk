@@ -15,9 +15,7 @@ export function tryCatch<T, E = Error>(promise: Promise<T>): Promise<Result<T, E
 export function tryCatch<T, E = Error>(fn: () => T): Result<T, E>;
 
 // Implementation
-export function tryCatch<T, E = Error>(
-  promiseOrFn: Promise<T> | (() => T)
-): Promise<Result<T, E>> | Result<T, E> {
+export function tryCatch<T, E = Error>(promiseOrFn: Promise<T> | (() => T)): Promise<Result<T, E>> | Result<T, E> {
   if (promiseOrFn instanceof Promise) {
     return (async () => {
       try {

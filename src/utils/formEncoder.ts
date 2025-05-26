@@ -118,9 +118,7 @@ export function extractOAuthCode(redirectUrl: string): string | null {
  * @param redirectUrl Full redirect URL that might contain error
  * @returns Error information or null if no error
  */
-export function extractOAuthError(
-  redirectUrl: string
-): { error: string; error_description?: string } | null {
+export function extractOAuthError(redirectUrl: string): { error: string; error_description?: string } | null {
   const { data: error } = tryCatch(() => {
     const url = new URL(redirectUrl);
     return url.searchParams.get('error');

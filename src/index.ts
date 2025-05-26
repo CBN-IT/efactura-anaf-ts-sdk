@@ -2,11 +2,12 @@
  * ANAF e-Factura TypeScript SDK
  *
  * A comprehensive TypeScript SDK for interacting with the Romanian ANAF e-Factura system.
- * Provides OAuth 2.0 authentication, document upload/download, validation, and UBL generation.
+ * Provides OAuth 2.0 authentication, document upload/download, validation, UBL generation,
+ * and company data lookup from the public ANAF API.
  *
  * @example
  * ```typescript
- * import { AnafAuthenticator, AnafClient } from 'anaf-e-factura-sdk';
+ * import { AnafAuthenticator, AnafEfacturaClient, AnafDetailsClient } from 'efactura-ts-sdk';
  *
  * // Setup authentication
  * const auth = new AnafAuthenticator({
@@ -16,10 +17,13 @@
  * });
  *
  * // Setup API client
- * const client = new AnafClient({
+ * const client = new AnafEfacturaClient({
  *   vatNumber: 'RO12345678',
  *   testMode: true
  * });
+ *
+ * // Setup company details client
+ * const detailsClient = new AnafDetailsClient();
  *
  * // Authenticate and get tokens
  * const authUrl = auth.getAuthorizationUrl();
@@ -27,12 +31,16 @@
  *
  * // Use tokens for API operations
  * const uploadResult = await client.uploadDocument(tokens.access_token, xmlContent);
+ *
+ * // Fetch company data
+ * const companyData = await detailsClient.getCompanyData('RO12345678');
  * ```
  */
 
 // Main exports
-export { AnafClient } from './AnafClient';
+export { AnafEfacturaClient } from './AnafClient';
 export { AnafAuthenticator } from './AnafAuthenticator';
+export { AnafDetailsClient } from './AnafDetailsClient';
 export { UblBuilder } from './UblBuilder';
 
 // Types
@@ -53,4 +61,4 @@ export * as FormUtils from './utils/formEncoder';
 export * as Constants from './constants';
 
 // Default export for convenience
-export { AnafClient as default } from './AnafClient';
+export { AnafEfacturaClient as default } from './AnafClient';

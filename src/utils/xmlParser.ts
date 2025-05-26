@@ -66,9 +66,7 @@ export function parseXmlResponse(xmlString: string): UploadStatus {
     // If ExecutionStatus is 0, it's successful - look for other attributes
     if (attributes.ExecutionStatus === '0') {
       return {
-        index_incarcare: attributes.index_incarcare
-          ? String(attributes.index_incarcare)
-          : undefined,
+        index_incarcare: attributes.index_incarcare ? String(attributes.index_incarcare) : undefined,
         id_descarcare: attributes.id_descarcare ? String(attributes.id_descarcare) : undefined,
         stare: attributes.stare ? String(attributes.stare) : undefined,
       };
@@ -99,27 +97,19 @@ export function parseXmlResponse(xmlString: string): UploadStatus {
     // Handle error responses
     if (content.Error || content.eroare) {
       const errorDetail = content.Error || content.eroare;
-      const errorMessage = errorDetail.mesaj
-        ? extractTextValue(errorDetail.mesaj)
-        : extractTextValue(errorDetail);
+      const errorMessage = errorDetail.mesaj ? extractTextValue(errorDetail.mesaj) : extractTextValue(errorDetail);
       return { eroare: errorMessage };
     }
 
     // Try to extract from first available key (fallback)
     const firstKey = Object.keys(content)[0];
     if (firstKey && content[firstKey]) {
-      const innerObject = Array.isArray(content[firstKey])
-        ? content[firstKey][0]
-        : content[firstKey];
+      const innerObject = Array.isArray(content[firstKey]) ? content[firstKey][0] : content[firstKey];
 
       if (typeof innerObject === 'object' && innerObject !== null) {
         return {
-          index_incarcare: innerObject.index_incarcare
-            ? extractTextValue(innerObject.index_incarcare)
-            : undefined,
-          id_descarcare: innerObject.id_descarcare
-            ? extractTextValue(innerObject.id_descarcare)
-            : undefined,
+          index_incarcare: innerObject.index_incarcare ? extractTextValue(innerObject.index_incarcare) : undefined,
+          id_descarcare: innerObject.id_descarcare ? extractTextValue(innerObject.id_descarcare) : undefined,
           stare: innerObject.stare ? extractTextValue(innerObject.stare) : undefined,
           eroare: innerObject.eroare ? extractTextValue(innerObject.eroare) : undefined,
           mesaj: innerObject.mesaj ? extractTextValue(innerObject.mesaj) : undefined,

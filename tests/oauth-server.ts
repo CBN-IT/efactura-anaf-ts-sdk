@@ -23,23 +23,23 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
   // Callback endpoint
   app.get('/callback', (req, res) => {
     const { code, error } = req.query;
-    
+
     console.log('\n📥 OAuth Callback received:', {
       code: code ? `${code.toString().substring(0, 20)}...` : 'none',
       error: error || 'none',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     const callbackData: OAuthCallbackData = {
       code: code as string | undefined,
-      error: error as string | undefined
+      error: error as string | undefined,
     };
 
     // Call the handler if set
     if (callbackHandler) {
       callbackHandler(callbackData);
     }
-    
+
     if (error) {
       console.log(`❌ OAuth error: ${error}`);
       res.status(400).send(`
@@ -56,7 +56,7 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
 
     if (code) {
       console.log(`✅ Authorization code captured: ${code.toString().substring(0, 20)}...`);
-      
+
       res.send(`
         <html>
           <body>
@@ -85,12 +85,12 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
 
   // Health check endpoint
   app.get('/health', (req, res) => {
-    res.json({ 
-      status: 'OK', 
+    res.json({
+      status: 'OK',
       message: 'OAuth callback server is running',
       timestamp: new Date().toISOString(),
       port: server ? (server.address() as any)?.port : 'unknown',
-      callbackUrl: process.env.ANAF_CALLBACK_URL 
+      callbackUrl: process.env.ANAF_CALLBACK_URL,
     });
   });
 
@@ -121,16 +121,18 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
     app,
     start: (port: number) => {
       return new Promise((resolve, reject) => {
-        const {data, error} = tryCatch(async () => {
+        const { data, error } = tryCatch(async () => {
           server = app.listen(port, () => {
-            console.log(`🌐 OAuth callback server running on http://localhost:${port}\n` +
-                        `🔗 Test URL: http://localhost:${port}/test\n` +
-                        `📥 Callback URL: http://localhost:${port}/callback\n` +
-                        `🌍 ANAF callback URL: ${process.env.ANAF_CALLBACK_URL || 'Not set'}\n` +
-                        `🔗 Test ngrok: ${process.env.ANAF_CALLBACK_URL?.replace('/callback', '/test') || 'N/A'}`);
+            console.log(
+              `🌐 OAuth callback server running on http://localhost:${port}\n` +
+                `🔗 Test URL: http://localhost:${port}/test\n` +
+                `📥 Callback URL: http://localhost:${port}/callback\n` +
+                `🌍 ANAF callback URL: ${process.env.ANAF_CALLBACK_URL || 'Not set'}\n` +
+                `🔗 Test ngrok: ${process.env.ANAF_CALLBACK_URL?.replace('/callback', '/test') || 'N/A'}`
+            );
             resolve(server!);
           });
-          
+
           server.on('error', reject);
         });
         if (error) {
@@ -139,7 +141,7 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
         return data;
       });
     },
-    
+
     stop: () => {
       if (server) {
         server.close();
@@ -147,9 +149,9 @@ export function createOAuthCallbackServer(): OAuthCallbackServer {
         server = undefined;
       }
     },
-    
+
     setCallbackHandler: (handler: (data: OAuthCallbackData) => void) => {
       callbackHandler = handler;
-    }
+    },
   };
-} 
+}

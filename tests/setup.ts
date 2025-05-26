@@ -58,17 +58,19 @@ if (typeof global.Blob === 'undefined') {
     }
 
     text(): Promise<string> {
-      const str = this.content.map(item => {
-        if (typeof item === 'string') return item;
-        if (item instanceof Buffer) return item.toString();
-        if (item instanceof ArrayBuffer) return Buffer.from(item).toString();
-        return '';
-      }).join('');
+      const str = this.content
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item instanceof Buffer) return item.toString();
+          if (item instanceof ArrayBuffer) return Buffer.from(item).toString();
+          return '';
+        })
+        .join('');
       return Promise.resolve(str);
     }
 
     arrayBuffer(): Promise<ArrayBuffer> {
-      const buffers = this.content.map(item => {
+      const buffers = this.content.map((item) => {
         if (typeof item === 'string') return Buffer.from(item);
         if (item instanceof Buffer) return item;
         if (item instanceof ArrayBuffer) return Buffer.from(item);
@@ -83,7 +85,7 @@ if (typeof global.Blob === 'undefined') {
       const content = this.content;
       return new ReadableStream({
         start(controller) {
-          content.forEach(item => {
+          content.forEach((item) => {
             if (typeof item === 'string') {
               controller.enqueue(new TextEncoder().encode(item));
             } else if (item instanceof Buffer) {
@@ -93,13 +95,13 @@ if (typeof global.Blob === 'undefined') {
             }
           });
           controller.close();
-        }
+        },
       });
     }
 
     // Add valueOf method to return the buffer for FormData compatibility
     valueOf(): Buffer {
-      const buffers = this.content.map(item => {
+      const buffers = this.content.map((item) => {
         if (typeof item === 'string') return Buffer.from(item);
         if (item instanceof Buffer) return item;
         if (item instanceof ArrayBuffer) return Buffer.from(item);
@@ -110,12 +112,14 @@ if (typeof global.Blob === 'undefined') {
 
     // Add toString method
     toString(): string {
-      return this.content.map(item => {
-        if (typeof item === 'string') return item;
-        if (item instanceof Buffer) return item.toString();
-        if (item instanceof ArrayBuffer) return Buffer.from(item).toString();
-        return '';
-      }).join('');
+      return this.content
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item instanceof Buffer) return item.toString();
+          if (item instanceof ArrayBuffer) return Buffer.from(item).toString();
+          return '';
+        })
+        .join('');
     }
 
     // Make it look like a File to FormData
@@ -183,5 +187,5 @@ global.testUtils = {
       return true;
     }
     return false;
-  }
-}; 
+  },
+};

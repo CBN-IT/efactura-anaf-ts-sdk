@@ -1,4 +1,4 @@
-import { AnafApiError, AnafAuthenticationError, AnafValidationError } from '../errors';
+import { AnafApiError, AnafAuthenticationError, AnafNotFoundError, AnafValidationError } from '../errors';
 import { tryCatch } from '../tryCatch';
 
 interface HttpOptions extends RequestInit {
@@ -34,8 +34,7 @@ export class HttpClient {
     const { timeout = this.defaultTimeout, baseURL, ...fetchOptions } = options;
 
     // Build full URL
-    const fullUrl =
-      baseURL || this.baseURL ? new URL(url, baseURL || this.baseURL).toString() : url;
+    const fullUrl = baseURL || this.baseURL ? new URL(url, baseURL || this.baseURL).toString() : url;
 
     // Setup timeout
     const controller = new AbortController();
@@ -106,11 +105,7 @@ export class HttpClient {
   /**
    * POST request
    */
-  async post<T = any>(
-    url: string,
-    body?: any,
-    options: HttpOptions = {}
-  ): Promise<HttpResponse<T>> {
+  async post<T = any>(url: string, body?: any, options: HttpOptions = {}): Promise<HttpResponse<T>> {
     const requestOptions: HttpOptions = { ...options, method: 'POST' };
 
     if (body !== undefined) {
@@ -138,10 +133,7 @@ export class HttpClient {
     const contentType = response.headers.get('content-type') || '';
 
     // For ArrayBuffer responses (PDF files)
-    if (
-      contentType.includes('application/pdf') ||
-      contentType.includes('application/octet-stream')
-    ) {
+    if (contentType.includes('application/pdf') || contentType.includes('application/octet-stream')) {
       return response.arrayBuffer() as Promise<T>;
     }
 
@@ -164,6 +156,8 @@ export class HttpClient {
       throw new AnafAuthenticationError(message);
     } else if (status >= 400 && status < 500) {
       throw new AnafValidationError(message);
+    } else if (status === 404) {
+      throw new AnafNotFoundError(message);
     } else {
       throw new AnafApiError(message, status, errorText);
     }

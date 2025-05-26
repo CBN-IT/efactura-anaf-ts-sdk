@@ -1,5 +1,5 @@
 import {
-  AnafClientConfig,
+  AnafEfacturaClientConfig,
   UploadStatus,
   UploadOptions,
   ListMessagesParams,
@@ -8,7 +8,7 @@ import {
   ValidationResult,
   DocumentStandardType,
 } from './types';
-import { AnafSdkError, AnafApiError, AnafAuthenticationError, AnafValidationError } from './errors';
+import { AnafSdkError, AnafApiError, AnafValidationError } from './errors';
 import {
   getBasePath,
   UPLOAD_PATH,
@@ -24,12 +24,7 @@ import {
   buildListMessagesParams,
   buildPaginatedMessagesParams,
 } from './constants';
-import {
-  parseXmlResponse,
-  parseJsonResponse,
-  isErrorResponse,
-  extractErrorMessage,
-} from './utils/xmlParser';
+import { parseXmlResponse, parseJsonResponse, isErrorResponse, extractErrorMessage } from './utils/xmlParser';
 import { isValidDaysParameter } from './utils/dateUtils';
 import { HttpClient } from './utils/httpClient';
 import { tryCatch } from './tryCatch';
@@ -42,7 +37,7 @@ import { tryCatch } from './tryCatch';
  *
  * @example
  * ```typescript
- * const client = new AnafClient({
+ * const client = new AnafEfacturaClient({
  *   vatNumber: 'RO12345678',
  *   testMode: true
  * });
@@ -54,8 +49,8 @@ import { tryCatch } from './tryCatch';
  * const status = await client.getUploadStatus(accessToken, uploadResult.index_incarcare);
  * ```
  */
-export class AnafClient {
-  private config: Required<AnafClientConfig>;
+export class AnafEfacturaClient {
+  private config: Required<AnafEfacturaClientConfig>;
   private httpClient: HttpClient;
   private basePath: string;
 
@@ -65,7 +60,7 @@ export class AnafClient {
    * @param config Client configuration
    * @throws {AnafValidationError} If required configuration is missing
    */
-  constructor(config: AnafClientConfig) {
+  constructor(config: AnafEfacturaClientConfig) {
     this.validateConfig(config);
 
     this.config = {
@@ -310,10 +305,7 @@ export class AnafClient {
    * @throws {AnafApiError} If message retrieval fails
    * @throws {AnafValidationError} If parameters are invalid
    */
-  public async getMessages(
-    accessToken: string,
-    params: ListMessagesParams
-  ): Promise<ListMessagesResponse> {
+  public async getMessages(accessToken: string, params: ListMessagesParams): Promise<ListMessagesResponse> {
     this.validateAccessToken(accessToken);
     this.validateListMessagesParams(params);
 
@@ -376,8 +368,7 @@ export class AnafClient {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      const responseText =
-        typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      const responseText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
 
       return {
         valid: !responseText.toLowerCase().includes('error'),
@@ -565,7 +556,7 @@ export class AnafClient {
   // PRIVATE METHODS
   // ==========================================================================
 
-  private validateConfig(config: AnafClientConfig): void {
+  private validateConfig(config: AnafEfacturaClientConfig): void {
     if (!config) {
       throw new AnafValidationError('Configuration is required');
     }

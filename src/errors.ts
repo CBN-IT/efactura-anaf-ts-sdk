@@ -13,6 +13,13 @@ export class AnafValidationError extends AnafSdkError {
   }
 }
 
+export class AnafNotFoundError extends AnafSdkError {
+  constructor(message: string) {
+    super(message);
+    Object.setPrototypeOf(this, AnafNotFoundError.prototype);
+  }
+}
+
 export class AnafAuthenticationError extends AnafSdkError {
   constructor(message: string = 'Authentication failed. Check your credentials or token.') {
     super(message);
@@ -45,10 +52,7 @@ export class AnafXmlParsingError extends AnafSdkError {
 export class AnafUnexpectedResponseError extends AnafSdkError {
   public responseData?: any;
 
-  constructor(
-    message: string = 'The API returned an unexpected response format.',
-    responseData?: any
-  ) {
+  constructor(message: string = 'The API returned an unexpected response format.', responseData?: any) {
     super(message);
     this.responseData = responseData;
     Object.setPrototypeOf(this, AnafUnexpectedResponseError.prototype);

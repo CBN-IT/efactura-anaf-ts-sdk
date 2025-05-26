@@ -153,8 +153,7 @@ export const DEFAULT_UNIT_CODE = 'EA'; // Each
 /**
  * UBL customization ID for CIUS-RO compliance
  */
-export const UBL_CUSTOMIZATION_ID =
-  'urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1';
+export const UBL_CUSTOMIZATION_ID = 'urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1';
 
 /**
  * Default invoice type code (Commercial Invoice)
@@ -168,10 +167,7 @@ export const INVOICE_TYPE_CODE = '380';
 /**
  * Get the appropriate base path based on auth mode and environment
  */
-export const getBasePath = (
-  authMode: 'oauth' | 'cert' = 'oauth',
-  testMode: boolean = false
-): string => {
+export const getBasePath = (authMode: 'oauth' | 'cert' = 'oauth', testMode: boolean = false): string => {
   if (authMode === 'cert') {
     return testMode ? BASE_PATH_CERT_TEST : BASE_PATH_CERT_PROD;
   }
@@ -247,11 +243,7 @@ export const buildDownloadParams = (downloadId: string): URLSearchParams => {
 /**
  * Build list messages query parameters
  */
-export const buildListMessagesParams = (
-  vatNumber: string,
-  days: number,
-  filter?: string
-): URLSearchParams => {
+export const buildListMessagesParams = (vatNumber: string, days: number, filter?: string): URLSearchParams => {
   const params = new URLSearchParams();
   params.append('cif', vatNumber);
   params.append('zile', days.toString());

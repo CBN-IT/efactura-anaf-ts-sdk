@@ -23,7 +23,7 @@ describe('UblBuilder Tests', () => {
   describe('XML Generation with Valid Data', () => {
     test('should generate valid UBL XML for basic invoice', () => {
       const invoiceData: InvoiceInput = mockTestData.invoiceData;
-      
+
       const xml = builder.generateInvoiceXml(invoiceData);
 
       // Check XML structure
@@ -31,7 +31,7 @@ describe('UblBuilder Tests', () => {
       expect(xml).toContain('<Invoice');
       expect(xml).toContain('urn:oasis:names:specification:ubl:schema:xsd:Invoice-2');
       expect(xml).toContain('</Invoice>');
-      
+
       // Check required fields
       expect(xml).toContain(invoiceData.invoiceNumber);
       expect(xml).toContain(invoiceData.supplier.registrationName);
@@ -43,7 +43,7 @@ describe('UblBuilder Tests', () => {
       const invoiceData: InvoiceInput = {
         ...mockTestData.invoiceData,
         invoiceNumber: 'INV-2024-001',
-        issueDate: new Date('2024-01-15')
+        issueDate: new Date('2024-01-15'),
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
@@ -63,9 +63,9 @@ describe('UblBuilder Tests', () => {
           address: {
             street: 'Str. Testului 123',
             city: 'Bucharest',
-            postalZone: '010203'
-          }
-        }
+            postalZone: '010203',
+          },
+        },
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
@@ -86,9 +86,9 @@ describe('UblBuilder Tests', () => {
           address: {
             street: 'Str. Customer 456',
             city: 'Cluj-Napoca',
-            postalZone: '400123'
-          }
-        }
+            postalZone: '400123',
+          },
+        },
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
@@ -107,10 +107,10 @@ describe('UblBuilder Tests', () => {
           {
             description: 'Test Product',
             quantity: 2,
-            unitPrice: 150.50,
-            taxPercent: 19
-          }
-        ]
+            unitPrice: 150.5,
+            taxPercent: 19,
+          },
+        ],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
@@ -119,7 +119,7 @@ describe('UblBuilder Tests', () => {
       expect(xml).toContain('2'); // quantity
       expect(xml).toContain('150.50'); // unit price
       expect(xml).toContain('19'); // tax percent
-      
+
       // Check calculated values
       expect(xml).toContain('301.00'); // line total (2 * 150.50)
       expect(xml).toContain('57.19'); // tax amount (301 * 0.19)
@@ -134,22 +134,22 @@ describe('UblBuilder Tests', () => {
             description: 'Product 1',
             quantity: 1,
             unitPrice: 100,
-            taxPercent: 19
+            taxPercent: 19,
           },
           {
             description: 'Product 2',
             quantity: 2,
             unitPrice: 50,
-            taxPercent: 19
-          }
-        ]
+            taxPercent: 19,
+          },
+        ],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
 
       expect(xml).toContain('Product 1');
       expect(xml).toContain('Product 2');
-      
+
       // Check totals (100 + 100 = 200 base, 38 tax, 238 total)
       expect(xml).toContain('200.00'); // total base
       expect(xml).toContain('38.00'); // total tax
@@ -160,7 +160,7 @@ describe('UblBuilder Tests', () => {
       // Test VAT payer
       const vatPayerData: InvoiceInput = {
         ...mockTestData.invoiceData,
-        isSupplierVatPayer: true
+        isSupplierVatPayer: true,
       };
 
       const vatPayerXml = builder.generateInvoiceXml(vatPayerData);
@@ -170,7 +170,7 @@ describe('UblBuilder Tests', () => {
       // Test non-VAT payer
       const nonVatPayerData: InvoiceInput = {
         ...mockTestData.invoiceData,
-        isSupplierVatPayer: false
+        isSupplierVatPayer: false,
       };
 
       const nonVatPayerXml = builder.generateInvoiceXml(nonVatPayerData);
@@ -185,7 +185,7 @@ describe('UblBuilder Tests', () => {
 
       // Basic XML validation
       expect(xml.startsWith('<?xml version="1.0"')).toBe(true);
-      
+
       // Count opening and closing tags (basic balance check)
       const openingTags = (xml.match(/</g) || []).length;
       const closingTags = (xml.match(/>/g) || []).length;
@@ -199,24 +199,24 @@ describe('UblBuilder Tests', () => {
 
     test('should generate XML with proper encoding', () => {
       const xml = builder.generateInvoiceXml(mockTestData.invoiceData);
-      
+
       expect(xml).toContain('encoding="UTF-8"');
-      
+
       // Test with special characters
       const specialCharsData: InvoiceInput = {
         ...mockTestData.invoiceData,
         supplier: {
           ...mockTestData.invoiceData.supplier,
-          registrationName: 'Test & Company SRL "Special" <Chars>'
-        }
+          registrationName: 'Test & Company SRL "Special" <Chars>',
+        },
       };
 
       const specialXml = builder.generateInvoiceXml(specialCharsData);
-      
+
       // Should escape special XML characters
       expect(specialXml).toContain('&amp;'); // & becomes &amp;
-      expect(specialXml).toContain('&lt;');  // < becomes &lt;
-      expect(specialXml).toContain('&gt;');  // > becomes &gt;
+      expect(specialXml).toContain('&lt;'); // < becomes &lt;
+      expect(specialXml).toContain('&gt;'); // > becomes &gt;
       // Note: xmlbuilder2 correctly handles quotes in XML content without escaping to &quot;
       expect(specialXml).toContain('Test &amp; Company SRL "Special" &lt;Chars&gt;');
     });
@@ -224,12 +224,12 @@ describe('UblBuilder Tests', () => {
     test('should maintain consistent element ordering', () => {
       const xml1 = builder.generateInvoiceXml(mockTestData.invoiceData);
       const xml2 = builder.generateInvoiceXml(mockTestData.invoiceData);
-      
+
       // The XML structure should be consistent between calls
       const extractStructure = (xml: string) => {
         return xml.replace(/>[^<]+</g, '><'); // Remove content, keep only structure
       };
-      
+
       expect(extractStructure(xml1)).toBe(extractStructure(xml2));
     });
   });
@@ -238,15 +238,15 @@ describe('UblBuilder Tests', () => {
     test('should handle empty invoice lines', () => {
       const invoiceData: InvoiceInput = {
         ...mockTestData.invoiceData,
-        lines: []
+        lines: [],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
-      
+
       // Should still generate valid XML without lines
       expect(xml).toContain('<Invoice');
       expect(xml).toContain('</Invoice>');
-      
+
       // Should have zero totals
       expect(xml).toContain('<cbc:TaxAmount currencyID="RON">0.00</cbc:TaxAmount>');
       expect(xml).toContain('<cbc:LineExtensionAmount currencyID="RON">0.00</cbc:LineExtensionAmount>');
@@ -261,13 +261,13 @@ describe('UblBuilder Tests', () => {
             description: 'Free Service',
             quantity: 1,
             unitPrice: 0,
-            taxPercent: 19
-          }
-        ]
+            taxPercent: 19,
+          },
+        ],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
-      
+
       expect(xml).toContain('Free Service');
       expect(xml).toContain('0.00');
     });
@@ -281,21 +281,21 @@ describe('UblBuilder Tests', () => {
             description: longDescription,
             quantity: 1,
             unitPrice: 100,
-            taxPercent: 19
-          }
-        ]
+            taxPercent: 19,
+          },
+        ],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
-      
+
       expect(xml).toContain(longDescription);
       expect(xml).toBeDefined();
     });
 
     test('should handle various tax percentages', () => {
       const taxRates = [0, 5, 9, 19, 24];
-      
-      taxRates.forEach(taxRate => {
+
+      taxRates.forEach((taxRate) => {
         const invoiceData: InvoiceInput = {
           ...mockTestData.invoiceData,
           lines: [
@@ -303,13 +303,13 @@ describe('UblBuilder Tests', () => {
               description: `Item with ${taxRate}% tax`,
               quantity: 1,
               unitPrice: 100,
-              taxPercent: taxRate
-            }
-          ]
+              taxPercent: taxRate,
+            },
+          ],
         };
 
         const xml = builder.generateInvoiceXml(invoiceData);
-        
+
         expect(xml).toContain(taxRate.toString());
         expect(xml).toBeDefined();
       });
@@ -323,13 +323,13 @@ describe('UblBuilder Tests', () => {
             description: 'Precision Test',
             quantity: 3,
             unitPrice: 33.333333,
-            taxPercent: 19
-          }
-        ]
+            taxPercent: 19,
+          },
+        ],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
-      
+
       // Should round to 2 decimal places
       expect(xml).toContain('33.33'); // unit price
       expect(xml).toContain('99.99'); // line total (3 * 33.33)
@@ -345,19 +345,19 @@ describe('UblBuilder Tests', () => {
             description: 'Test Item',
             quantity: 5,
             unitPrice: 20.5,
-            taxPercent: 19
-          }
-        ]
+            taxPercent: 19,
+          },
+        ],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
-      
+
       // Line total: 5 * 20.5 = 102.5
       expect(xml).toContain('102.50');
-      
+
       // Tax amount: 102.5 * 0.19 = 19.475 → 19.48
       expect(xml).toContain('19.48');
-      
+
       // Total with tax: 102.5 + 19.48 = 121.98
       expect(xml).toContain('121.98');
     });
@@ -370,46 +370,46 @@ describe('UblBuilder Tests', () => {
             description: 'Item with 19% VAT',
             quantity: 1,
             unitPrice: 100,
-            taxPercent: 19
+            taxPercent: 19,
           },
           {
             description: 'Item with 9% VAT',
             quantity: 1,
             unitPrice: 100,
-            taxPercent: 9
-          }
-        ]
+            taxPercent: 9,
+          },
+        ],
       };
 
       const xml = builder.generateInvoiceXml(invoiceData);
-      
+
       // Should contain both tax rates
       expect(xml).toContain('19');
       expect(xml).toContain('9');
-      
+
       // Total base: 200
       expect(xml).toContain('200.00');
-      
+
       // Total tax: 19 + 9 = 28
       expect(xml).toContain('28.00');
-      
+
       // Total with tax: 228
       expect(xml).toContain('228.00');
     });
 
     test('should generate unique invoice numbers when requested', () => {
       const baseInvoiceData = { ...mockTestData.invoiceData };
-      
+
       const xml1 = builder.generateInvoiceXml({
         ...baseInvoiceData,
-        invoiceNumber: testDataGenerators.randomInvoiceNumber()
+        invoiceNumber: testDataGenerators.randomInvoiceNumber(),
       });
-      
+
       const xml2 = builder.generateInvoiceXml({
         ...baseInvoiceData,
-        invoiceNumber: testDataGenerators.randomInvoiceNumber()
+        invoiceNumber: testDataGenerators.randomInvoiceNumber(),
       });
-      
+
       expect(xml1).not.toBe(xml2);
     });
   });
@@ -417,13 +417,13 @@ describe('UblBuilder Tests', () => {
   describe('Performance Tests', () => {
     test('should generate XML quickly for simple invoices', () => {
       const start = Date.now();
-      
+
       for (let i = 0; i < 100; i++) {
         builder.generateInvoiceXml(mockTestData.invoiceData);
       }
-      
+
       const duration = Date.now() - start;
-      
+
       // Should complete 100 generations in reasonable time (less than 1 second)
       expect(duration).toBeLessThan(1000);
     });
@@ -435,17 +435,17 @@ describe('UblBuilder Tests', () => {
           description: `Item ${i + 1}`,
           quantity: Math.floor(Math.random() * 10) + 1,
           unitPrice: Math.round(Math.random() * 1000 * 100) / 100,
-          taxPercent: 19
-        }))
+          taxPercent: 19,
+        })),
       };
 
       const start = Date.now();
       const xml = builder.generateInvoiceXml(largeInvoiceData);
       const duration = Date.now() - start;
-      
+
       expect(xml).toBeDefined();
       expect(xml.length).toBeGreaterThan(1000);
       expect(duration).toBeLessThan(500); // Should complete in reasonable time
     });
   });
-}); 
+});

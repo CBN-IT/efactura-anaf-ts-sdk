@@ -1,7 +1,7 @@
 {
-  "name": "efactura-anaf-ts-sdk",
-  "version": "1.0.1",
-  "description": "Complete TypeScript SDK for Romanian ANAF e-Factura API - OAuth2, UBL generation, validation & PDF conversion",
+  "name": "anaf-ts-sdk",
+  "version": "1.0.0",
+  "description": "Complete TypeScript SDK for Romanian ANAF API -E-Factura, Company checks",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/esm/index.js",
@@ -152,13 +152,5 @@
         "statements": 30
       }
     }
-  },
-  "prettier": {
-    "semi": true,
-    "trailingComma": "es5",
-    "singleQuote": true,
-    "printWidth": 100,
-    "tabWidth": 2,
-    "useTabs": false
   }
 }

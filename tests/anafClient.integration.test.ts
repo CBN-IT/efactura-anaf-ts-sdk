@@ -1,27 +1,23 @@
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { AnafClient } from '../src/AnafClient';
+import { AnafEfacturaClient } from '../src';
 import { AnafAuthenticator } from '../src/AnafAuthenticator';
 import { UblBuilder } from '../src/UblBuilder';
-import { 
-  AnafValidationError, 
-  AnafApiError, 
-  AnafAuthenticationError 
-} from '../src/errors';
-import { 
-  TokenResponse, 
-  UploadOptions, 
+import { AnafValidationError, AnafApiError, AnafAuthenticationError } from '../src/errors';
+import {
+  TokenResponse,
+  UploadOptions,
   UploadStatus,
   ListMessagesResponse,
   ValidationResult,
-  InvoiceInput 
+  InvoiceInput,
 } from '../src/types';
 import { tryCatch } from '../src/tryCatch';
 
 /**
  * In order to run these tests you need to have a valid token set in token.secrets
- * 
+ *
  * 1. Test that the client can be created with valid configuration
  * 2. Test that the client can be created with invalid configuration
  * 3. Test that the client can upload a document
@@ -35,12 +31,12 @@ import { tryCatch } from '../src/tryCatch';
 // Load environment variables
 dotenv.config();
 
-describe('AnafClient Integration Tests', () => {
-  let client: AnafClient;
+describe('AnafEfacturaClient Integration Tests', () => {
+  let client: AnafEfacturaClient;
   let authenticator: AnafAuthenticator;
   let accessToken: string;
   const tokenFilePath = path.join(process.cwd(), 'token.secret');
-  
+
   // Test data
   const testVatNumber = 'RO12345678';
   const testInvoiceData: InvoiceInput = {
@@ -53,8 +49,8 @@ describe('AnafClient Integration Tests', () => {
       address: {
         street: 'Str. Test 1',
         city: 'Bucharest',
-        postalZone: '010101'
-      }
+        postalZone: '010101',
+      },
     },
     customer: {
       registrationName: 'Test Customer SRL',
@@ -62,18 +58,18 @@ describe('AnafClient Integration Tests', () => {
       address: {
         street: 'Str. Customer 2',
         city: 'Cluj-Napoca',
-        postalZone: '400001'
-      }
+        postalZone: '400001',
+      },
     },
     lines: [
       {
         description: 'Test Product/Service',
         quantity: 1,
         unitPrice: 100,
-        taxPercent: 19
-      }
+        taxPercent: 19,
+      },
     ],
-    isSupplierVatPayer: true
+    isSupplierVatPayer: true,
   };
 
   beforeAll(async () => {
@@ -87,22 +83,22 @@ describe('AnafClient Integration Tests', () => {
     authenticator = new AnafAuthenticator({
       clientId: process.env.ANAF_CLIENT_ID!,
       clientSecret: process.env.ANAF_CLIENT_SECRET!,
-      redirectUri: process.env.ANAF_CALLBACK_URL!
+      redirectUri: process.env.ANAF_CALLBACK_URL!,
     });
 
-    client = new AnafClient({
+    client = new AnafEfacturaClient({
       vatNumber: testVatNumber,
-      testMode: true // Always use test environment for integration tests
+      testMode: true, // Always use test environment for integration tests
     });
 
     // Try to load existing valid tokens
     const tokens = await loadTokens();
-    
+
     if (tokens && !isTokenExpired(tokens)) {
       accessToken = tokens.access_token;
       console.log('✅ Using existing valid access token');
     } else if (tokens?.refresh_token) {
-      const {data, error} = tryCatch(async () => {
+      const { data, error } = tryCatch(async () => {
         console.log('🔄 Refreshing expired token...');
         const newTokens = await authenticator.refreshAccessToken(tokens.refresh_token);
         accessToken = newTokens.access_token;
@@ -112,7 +108,7 @@ describe('AnafClient Integration Tests', () => {
       if (error) {
         console.log('❌ Token refresh failed, need new authentication');
         throw new Error('Integration tests require valid OAuth tokens. Run auth tests first.');
-      } 
+      }
     } else {
       throw new Error('Integration tests require valid OAuth tokens. Run auth tests first.');
     }
@@ -153,7 +149,7 @@ describe('AnafClient Integration Tests', () => {
         standard: 'UBL',
         extern: false,
         autofactura: false,
-        executare: false
+        executare: false,
       };
 
       uploadResult = await client.uploadDocument(accessToken, generatedXml, options);
@@ -161,7 +157,7 @@ describe('AnafClient Integration Tests', () => {
       expect(uploadResult).toBeDefined();
       expect(uploadResult.index_incarcare).toBeDefined();
       expect(uploadResult.index_incarcare!.length).toBeGreaterThan(0);
-      
+
       console.log(`✅ Document uploaded successfully with ID: ${uploadResult.index_incarcare}`);
     }, 30000);
 
@@ -170,7 +166,7 @@ describe('AnafClient Integration Tests', () => {
 
       expect(b2cResult).toBeDefined();
       expect(b2cResult.index_incarcare).toBeDefined();
-      
+
       console.log(`✅ B2C document uploaded successfully with ID: ${b2cResult.index_incarcare}`);
     }, 30000);
 
@@ -183,9 +179,9 @@ describe('AnafClient Integration Tests', () => {
 
       expect(status).toBeDefined();
       expect(['ok', 'nok', 'in prelucrare']).toContain(status.stare);
-      
+
       console.log(`✅ Upload status: ${status.stare}`);
-      
+
       if (status.id_descarcare) {
         console.log(`📥 Download ID available: ${status.id_descarcare}`);
       }
@@ -196,7 +192,7 @@ describe('AnafClient Integration Tests', () => {
         standard: 'CII',
         extern: true,
         autofactura: true,
-        executare: true
+        executare: true,
       };
 
       const result = await client.uploadDocument(accessToken, generatedXml, optionsTest);
@@ -210,15 +206,15 @@ describe('AnafClient Integration Tests', () => {
     test('should get recent messages', async () => {
       const messages = await client.getMessages(accessToken, {
         zile: 7,
-        filtru: undefined // Get all message types
+        filtru: undefined, // Get all message types
       });
 
       expect(messages).toBeDefined();
       expect(messages.titlu).toBeDefined();
-      
+
       if (messages.mesaje && messages.mesaje.length > 0) {
         console.log(`✅ Found ${messages.mesaje.length} messages in the last 7 days`);
-        
+
         // Verify message structure
         const firstMessage = messages.mesaje[0];
         expect(firstMessage.id).toBeDefined();
@@ -231,18 +227,18 @@ describe('AnafClient Integration Tests', () => {
 
     test('should get paginated messages', async () => {
       const endTime = Date.now();
-      const startTime = endTime - (30 * 24 * 60 * 60 * 1000); // Last 30 days
+      const startTime = endTime - 30 * 24 * 60 * 60 * 1000; // Last 30 days
 
       const paginatedMessages = await client.getMessagesPaginated(accessToken, {
         startTime,
         endTime,
         pagina: 1,
-        filtru: undefined
+        filtru: undefined,
       });
 
       expect(paginatedMessages).toBeDefined();
       expect(paginatedMessages.titlu).toBeDefined();
-      
+
       if (paginatedMessages.mesaje && paginatedMessages.mesaje.length > 0) {
         console.log(`✅ Found ${paginatedMessages.mesaje.length} paginated messages`);
       } else {
@@ -257,7 +253,7 @@ describe('AnafClient Integration Tests', () => {
       for (const filter of filters) {
         const messages = await client.getMessages(accessToken, {
           zile: 30,
-          filtru: filter
+          filtru: filter,
         });
 
         expect(messages).toBeDefined();
@@ -270,12 +266,12 @@ describe('AnafClient Integration Tests', () => {
     test('should handle download request (may not have content)', async () => {
       // Try to find a message with download ID
       const messages = await client.getMessages(accessToken, { zile: 30 });
-      
+
       if (messages.mesaje && messages.mesaje.length > 0) {
-        const messageWithId = messages.mesaje.find(m => m.id);
-        
+        const messageWithId = messages.mesaje.find((m) => m.id);
+
         if (messageWithId?.id) {
-          const {error} = tryCatch(async () => {
+          const { error } = tryCatch(async () => {
             const downloadContent = await client.downloadDocument(accessToken, messageWithId.id);
             expect(downloadContent).toBeDefined();
             console.log(`✅ Download successful for message ${messageWithId.id}`);
@@ -308,9 +304,9 @@ describe('AnafClient Integration Tests', () => {
       expect(result).toBeDefined();
       expect(typeof result.valid).toBe('boolean');
       expect(result.details).toBeDefined();
-      
+
       console.log(`✅ XML validation (FACT1): ${result.valid ? 'VALID' : 'INVALID'}`);
-      
+
       if (!result.valid) {
         console.log(`Validation details: ${result.details.substring(0, 200)}...`);
       }
@@ -321,19 +317,19 @@ describe('AnafClient Integration Tests', () => {
 
       expect(result).toBeDefined();
       expect(typeof result.valid).toBe('boolean');
-      
+
       console.log(`✅ XML validation (FCN): ${result.valid ? 'VALID' : 'INVALID'}`);
     }, 30000);
 
     test('should handle invalid XML validation gracefully', async () => {
       const invalidXml = '<?xml version="1.0"?><InvalidRoot>Not a valid invoice</InvalidRoot>';
-      
+
       const result = await client.validateXml(accessToken, invalidXml, 'FACT1');
 
       expect(result).toBeDefined();
       expect(result.valid).toBe(false);
       expect(result.details).toContain('error');
-      
+
       console.log('✅ Invalid XML correctly identified as invalid');
     }, 30000);
   });
@@ -347,16 +343,16 @@ describe('AnafClient Integration Tests', () => {
     });
 
     test('should convert XML to PDF with validation', async () => {
-      const {data, error} = tryCatch(async () => {
+      const { data, error } = tryCatch(async () => {
         const pdfBuffer = await client.convertXmlToPdf(accessToken, testXml, 'FACT1');
 
         expect(pdfBuffer).toBeInstanceOf(Buffer);
         expect(pdfBuffer.length).toBeGreaterThan(0);
-        
+
         // PDF files start with %PDF
         const pdfHeader = pdfBuffer.toString('ascii', 0, 4);
         expect(pdfHeader).toBe('%PDF');
-        
+
         console.log(`✅ PDF conversion successful: ${pdfBuffer.length} bytes`);
       });
       if (error) {
@@ -367,12 +363,12 @@ describe('AnafClient Integration Tests', () => {
     }, 30000);
 
     test('should convert XML to PDF without validation', async () => {
-      const {data, error} = tryCatch(async () => {
+      const { data, error } = tryCatch(async () => {
         const pdfBuffer = await client.convertXmlToPdfNoValidation(accessToken, testXml, 'FACT1');
 
         expect(pdfBuffer).toBeInstanceOf(Buffer);
         expect(pdfBuffer.length).toBeGreaterThan(0);
-        
+
         console.log(`✅ PDF conversion (no validation) successful: ${pdfBuffer.length} bytes`);
       });
       if (error) {
@@ -389,33 +385,27 @@ describe('AnafClient Integration Tests', () => {
       const builder = new UblBuilder();
       const xml = builder.generateInvoiceXml(testInvoiceData);
 
-      await expect(
-        client.uploadDocument(expiredToken, xml)
-      ).rejects.toThrow(AnafAuthenticationError);
+      await expect(client.uploadDocument(expiredToken, xml)).rejects.toThrow(AnafAuthenticationError);
     }, 15000);
 
     test('should handle invalid XML gracefully', async () => {
       const invalidXml = 'This is not XML at all';
 
-      await expect(
-        client.uploadDocument(accessToken, invalidXml)
-      ).rejects.toThrow();
+      await expect(client.uploadDocument(accessToken, invalidXml)).rejects.toThrow();
     }, 15000);
 
     test('should handle network timeouts', async () => {
       // Create client with very short timeout
-      const shortTimeoutClient = new AnafClient({
+      const shortTimeoutClient = new AnafEfacturaClient({
         vatNumber: testVatNumber,
         testMode: true,
-        timeout: 1 // 1ms timeout
+        timeout: 1, // 1ms timeout
       });
 
       const builder = new UblBuilder();
       const xml = builder.generateInvoiceXml(testInvoiceData);
 
-      await expect(
-        shortTimeoutClient.uploadDocument(accessToken, xml)
-      ).rejects.toThrow();
+      await expect(shortTimeoutClient.uploadDocument(accessToken, xml)).rejects.toThrow();
     }, 15000);
   });
 
@@ -423,34 +413,39 @@ describe('AnafClient Integration Tests', () => {
     test('should handle API rate limits gracefully', async () => {
       // Try multiple quick requests to test rate limiting
       const promises: Promise<ListMessagesResponse>[] = [];
-      
+
       for (let i = 0; i < 5; i++) {
-        promises.push(client.getMessages(accessToken, { zile: 1 }).then(response => response as ListMessagesResponse).catch(error => {
-          // Rate limiting errors are expected
-          if (error.message.includes('limita')) {
-            console.log('ℹ️ Rate limit encountered (expected)');
-            return {
-              mesaje: [],
-              eroare: 'Rate limit exceeded',
-              titlu: 'Rate limit exceeded',
-              info: 'Rate limit exceeded',
-              eroare_descarcare: 'Rate limit exceeded'
-            };
-          }
-          throw error;
-        }));
+        promises.push(
+          client
+            .getMessages(accessToken, { zile: 1 })
+            .then((response) => response as ListMessagesResponse)
+            .catch((error) => {
+              // Rate limiting errors are expected
+              if (error.message.includes('limita')) {
+                console.log('ℹ️ Rate limit encountered (expected)');
+                return {
+                  mesaje: [],
+                  eroare: 'Rate limit exceeded',
+                  titlu: 'Rate limit exceeded',
+                  info: 'Rate limit exceeded',
+                  eroare_descarcare: 'Rate limit exceeded',
+                };
+              }
+              throw error;
+            })
+        );
       }
 
       const results = await Promise.all(promises);
       expect(results).toHaveLength(5);
-      
+
       console.log('✅ Rate limiting test completed');
     }, 30000);
   });
 
   // Helper functions
   async function loadTokens(): Promise<(TokenResponse & { obtained_at?: number; expires_at?: number }) | null> {
-    const {data, error} = tryCatch(async () => {
+    const { data, error } = tryCatch(async () => {
       if (fs.existsSync(tokenFilePath)) {
         const tokenData = fs.readFileSync(tokenFilePath, 'utf8');
         return JSON.parse(tokenData);
@@ -466,9 +461,9 @@ describe('AnafClient Integration Tests', () => {
     const tokenData = {
       ...tokens,
       obtained_at: Date.now(),
-      expires_at: Date.now() + (tokens.expires_in * 1000)
+      expires_at: Date.now() + tokens.expires_in * 1000,
     };
-    
+
     fs.writeFileSync(tokenFilePath, JSON.stringify(tokenData, null, 2));
   }
 
@@ -476,9 +471,9 @@ describe('AnafClient Integration Tests', () => {
     if (!tokens.expires_at) {
       return true;
     }
-    
+
     // Consider token expired 5 minutes before actual expiration
     const expirationBuffer = 5 * 60 * 1000; // 5 minutes
-    return Date.now() >= (tokens.expires_at - expirationBuffer);
+    return Date.now() >= tokens.expires_at - expirationBuffer;
   }
-}); 
+});
