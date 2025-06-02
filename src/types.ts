@@ -19,7 +19,8 @@ export interface AnafAuthConfig {
  * ```typescript
  * const config: AnafEfacturaClientConfig = {
  *   vatNumber: 'RO12345678',
- *   testMode: true
+ *   testMode: true,
+ *   refreshToken: 'your_refresh_token',
  * };
  * ```
  */
@@ -34,6 +35,10 @@ export interface AnafEfacturaClientConfig {
   axiosOptions?: any;
   /** Custom base path (overrides default) */
   basePath?: string;
+
+  // Authentication configuration for automatic token management
+  /** OAuth 2.0 refresh token for automatic access token refresh */
+  refreshToken: string;
 }
 
 /**
@@ -68,6 +73,28 @@ export type StandardType = 'UBL' | 'CN' | 'CII' | 'RASP';
 export type DocumentStandardType = 'FACT1' | 'FCN';
 
 /**
+ * Execution status for upload operations
+ * 0 indicates success, 1 indicates error
+ */
+export enum ExecutionStatus {
+  Success = 0,
+  Error = 1,
+}
+
+/**
+ * Status values for upload processing (stare field)
+ * As defined in OpenAPI spec for status check responses
+ */
+export enum UploadStatusValue {
+  /** Processing completed successfully */
+  Ok = 'ok',
+  /** Processing failed */
+  Failed = 'nok',
+  /** Currently being processed */
+  InProgress = 'in prelucrare',
+}
+
+/**
  * Upload options for document submission
  */
 export interface UploadOptions {
@@ -82,27 +109,19 @@ export interface UploadOptions {
 }
 
 /**
- * Response from upload and status check operations
- */
-export interface UploadStatus {
-  /** Upload ID for status checking */
-  index_incarcare?: string;
-  /** Download ID for retrieving results */
-  id_descarcare?: string;
-  /** Current status: 'ok', 'nok', 'in prelucrare' */
-  stare?: string;
-  /** Error message if applicable */
-  eroare?: string;
-  /** Additional message from ANAF */
-  mesaj?: string;
-  /** Alternative error structure */
-  Error?: { mesaj: string };
-}
-
-/**
  * Message filters for listing operations
+ * Each filter type represents a specific message category in the ANAF e-Factura system
  */
-export type MessageFilter = 'E' | 'T' | 'P' | 'R';
+export enum MessageFilter {
+  /** FACTURA TRIMISA - Invoice sent by you to a buyer */
+  InvoiceSent = 'T',
+  /** FACTURA PRIMITA - Invoice received by you from a supplier */
+  InvoiceReceived = 'P',
+  /** ERORI FACTURA - Error messages returned after uploading invalid XML */
+  InvoiceErrors = 'E',
+  /** MESAJ CUMPARATOR - RASP message/comment from buyer to issuer (or vice versa) */
+  BuyerMessage = 'R',
+}
 
 /**
  * Parameters for listing messages
@@ -129,7 +148,7 @@ export interface PaginatedMessagesParams {
 }
 
 /**
- * Individual message details
+ * Individual message details matching OpenAPI EfacturaDetailedMessage schema
  */
 export interface MessageDetails {
   /** Request ID */
@@ -142,16 +161,12 @@ export interface MessageDetails {
   id: string;
   /** Message details */
   detalii: string;
-  /** Sender VAT number */
-  cif_emitent?: string;
-  /** Beneficiary VAT number */
-  cif_beneficiar?: string;
-  /** VAT number for downloadable response */
-  cif?: string;
+  /** CIF number (required as per OpenAPI examples) */
+  cif: string;
 }
 
 /**
- * Response from message listing operations
+ * Response from simple message listing operations (listaMesajeFactura)
  */
 export interface ListMessagesResponse {
   /** Array of messages */
@@ -160,12 +175,41 @@ export interface ListMessagesResponse {
   eroare?: string;
   /** Serial number */
   serial?: string;
+  /** CIF number */
+  cui?: string;
   /** Response title */
   titlu?: string;
   /** Additional info */
   info?: string;
   /** Download error message */
   eroare_descarcare?: string;
+}
+
+/**
+ * Response from paginated message listing operations (listaMesajePaginatieFactura)
+ * Includes all pagination metadata as defined in OpenAPI specification
+ */
+export interface PaginatedListMessagesResponse {
+  /** Array of messages */
+  mesaje?: MessageDetails[];
+  /** Number of records in current page */
+  numar_inregistrari_in_pagina?: number;
+  /** Total number of records per page (page size limit) */
+  numar_total_inregistrari_per_pagina?: number;
+  /** Total number of records across all pages */
+  numar_total_inregistrari?: number;
+  /** Total number of pages */
+  numar_total_pagini?: number;
+  /** Current page index */
+  index_pagina_curenta?: number;
+  /** Serial number */
+  serial?: string;
+  /** CIF number */
+  cui?: string;
+  /** Response title */
+  titlu?: string;
+  /** Error message if applicable */
+  eroare?: string;
 }
 
 /**
@@ -381,4 +425,32 @@ export interface AnafFoundCompany {
 export interface AnafApiResponse {
   found?: AnafFoundCompany[];
   notFound?: { cui: number }[];
+}
+
+/**
+ * Response from upload operations (uploadDocument, uploadB2CDocument)
+ * Corresponds to the EfacturaXmlHeader schema from upload.json
+ */
+export interface UploadResponse {
+  /** Execution status (0=success, 1=error) */
+  executionStatus: ExecutionStatus;
+  /** Upload ID for status checking (only on success) */
+  indexIncarcare?: string;
+  /** Response timestamp from ANAF */
+  dateResponse?: string;
+  /** Error messages (only on error) */
+  errors?: string[];
+}
+
+/**
+ * Response from status check operations (getUploadStatus)
+ * Corresponds to the EfacturaXmlHeader schema for status responses
+ */
+export interface StatusResponse {
+  /** Processing status */
+  stare?: UploadStatusValue;
+  /** Download ID for retrieving results (only when stare=ok) */
+  idDescarcare?: string;
+  /** Error messages (only on error) */
+  errors?: string[];
 }

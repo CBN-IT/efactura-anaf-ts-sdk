@@ -1,0 +1,713 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "eFactura API Suite",
+    "description": "A comprehensive suite of APIs for eFactura operations, including XML signature validation, message status retrieval, message listing, invoice upload and download, and XML to PDF transformation.",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "XML Signature Validation",
+      "description": "API for validating electronic signatures on electronic invoices."
+    },
+    {
+      "name": "EFactura Message Status",
+      "description": "API for retrieving the processing status of electronic invoice messages."
+    },
+    {
+      "name": "EFactura Message List",
+      "description": "API for listing electronic invoice messages with various filtering options."
+    },
+    {
+      "name": "EFactura Upload",
+      "description": "API for uploading electronic invoice XML files."
+    },
+    {
+      "name": "eFactura Download",
+      "description": "Descarcare factura API"
+    },
+    {
+      "name": "EFactura Validation",
+      "description": "EFactura Validare API"
+    },
+    {
+      "name": "EFacturaXmlToPdf",
+      "description": "EFactura XmlToPdf API"
+    }
+  ],
+  "paths": {
+    "/stareMesaj": {
+      "get": {
+        "tags": [
+          "EFactura Message Status"
+        ],
+        "operationId": "getStareMesaj",
+        "parameters": [
+          {
+            "name": "id_incarcare",
+            "in": "query",
+            "description": "Index de incarcare al facturii",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": 18
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Solicitare incorecta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralErrorMessage"
+                },
+                "examples": {
+                  "nu ati completat parametrul id_incarcare": {
+                    "summary": "lipsa id_incarcare",
+                    "description": "nu ati completat parametrul id_incarcare",
+                    "value": {
+                      "timestamp": "19-08-2021 11:01:56",
+                      "status": 400,
+                      "error": "Bad Request",
+                      "message": "Parametrul id_incarcare este obligatoriu"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Operatie realizata cu succes",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/EfacturaXmlHeader"
+                },
+                "examples": {
+                  "factura a fost prelucrata cu succes": {
+                    "summary": "prelucrare cu succes",
+                    "description": "factura a fost prelucrata cu succes",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\" stare=\"ok\" id_descarcare=\"1234\"/>"
+                  },
+                  "factura nu a fost prelucrata cu succes": {
+                    "summary": "prelucrare esuata",
+                    "description": "factura nu a fost prelucrata cu succes",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\" stare=\"nok\" id_descarcare=\"123\"/>"
+                  },
+                  "factura in prelucrare": {
+                    "summary": "in prelucrare",
+                    "description": "factura in prelucrare",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\" stare=\"in prelucrare\"/>"
+                  },
+                  "factura nu a fost preluata de sistem": {
+                    "summary": "XML eronat",
+                    "description": "factura nu a fost preluata de sistem",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\" stare=\"XML cu erori nepreluat de sistem\"/>"
+                  },
+                  "nu aveti dreptul de interogare pentru indexul solicitat": {
+                    "summary": "lipsa drepturi index",
+                    "description": "nu aveti dreptul de interogare pentru indexul solicitat",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\">\n    <Errors errorMessage=\"Nu aveti dreptul de inteorgare pentru id_incarcare= 18\"/>\n</header>"
+                  },
+                  "nu aveti dreptul de interogare": {
+                    "summary": "lipsa drepturi",
+                    "description": "nu aveti dreptul de interogare",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\">\r\n    <Errors errorMessage=\"Nu exista niciun CIF petru care sa aveti drept\"/>\r\n</header>"
+                  },
+                  "index de incarcare nu este valid": {
+                    "summary": "index invalid",
+                    "description": "index de incarcare nu este valid",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\">\r\n    <Errors errorMessage=\"Id_incarcare introdus= aaa nu este un numar intreg\"/>\r\n</header>"
+                  },
+                  "factura nu a fost identificata in sistem": {
+                    "summary": "factura inexistenta",
+                    "description": "factura nu a fost identificata in sistem",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\">\n    <Errors errorMessage=\"Nu exista factura cu id_incarcare= 15000\"/>\n</header>"
+                  },
+                  "a fost atinsa limita de apeluri zilnice": {
+                    "summary": "limita apeluri zilnice atinsa",
+                    "description": "a fost atinsa limita de apeluri zilnice",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:efactura:stareMesajFactura:v1\">\r\n    <Errors errorMessage=\"S-au facut deja 20 descarcari de mesaj in cursul zilei\"/>\r\n</header>"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/uploadb2c": {
+      "post": {
+        "tags": [
+          "EFactura Upload"
+        ],
+        "operationId": "handleRequestb2c",
+        "parameters": [
+          {
+            "name": "standard",
+            "in": "query",
+            "description": "Specifica tipul xml-ului ce trebuie transmis. Valorile acceptate sunt UBL, CN, CII sau RASP",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "UBL"
+          },
+          {
+            "name": "cif",
+            "in": "query",
+            "description": "Specifica CIF-ul la care va ajunge eroarea in cazul in care nu se poate identifica vanzatorul in XML-ul facturii",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": 8000000000
+          },
+          {
+            "name": "extern",
+            "in": "query",
+            "description": "Folosit doar daca cumparatorul nu este din ROMANIA. Parametrul poate sa lipseasca, iar valoare acceptata este DA",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "DA"
+          },
+          {
+            "name": "autofactura",
+            "in": "query",
+            "description": "Folosit doar daca se emite factura de catre beneficiar in numele furnizorului. Parametrul poate sa lipseasca, iar valoare acceptata este DA",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "DA"
+          },
+          {
+            "name": "executare",
+            "in": "query",
+            "description": "Folosit de catre organul de executare pentru depunerea facturii in numele debitorului. Parametrul poate sa lipseasca, iar valoare acceptata este DA",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "DA"
+          }
+        ],
+        "requestBody": {
+          "description": "Trebuie atasat un fisier de tip xml",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              },
+              "examples": {
+                "structura xml pentru UBL": {
+                  "summary": "UBL",
+                  "description": "structura xml pentru UBL",
+                  "value": ""
+                },
+                "structura xml pentru CN": {
+                  "summary": "CN",
+                  "description": "structura xml pentru CN",
+                  "value": ""
+                },
+                "structura xml pentru CII": {
+                  "summary": "CII",
+                  "description": "structura xml pentru CII",
+                  "value": ""
+                },
+                "structura xml pentru RASP": {
+                  "summary": "RASP",
+                  "description": "structura xml pentru RASP",
+                  "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:reqMesaj:v1\" index_incarcare=\"191823\" message=\"mesaj de test, standard RASP\"/>"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Operatie realizata cu succes",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/EfacturaXmlHeader"
+                },
+                "examples": {
+                  "factura a fost incarcata cu succes": {
+                    "summary": "depunere cu succes",
+                    "description": "factura a fost incarcata cu succes",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051140\" ExecutionStatus=\"0\" index_incarcare=\"3828\"/>"
+                  },
+                  "nu a fost specificat un standard bun": {
+                    "summary": "standard invalid",
+                    "description": "nu a fost specificat un standard bun",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051144\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Valorile acceptate pentru parametrul standard sunt UBL, CN, CII sau RASP\"/>\r\n</header>"
+                  },
+                  "marimea fisierului estre prea mare": {
+                    "summary": "dimensiune fisier prea mare",
+                    "description": "marimea fisierului estre prea mare",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051144\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Marime fisier transmis mai mare de 10 MB.\"/>\r\n</header>"
+                  },
+                  "cif-ul trebuie sa fie numeric": {
+                    "summary": "cif invalid",
+                    "description": "cif-ul trebuie sa fie numeric",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121019\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"CIF introdus= 123a nu este un numar\"/>\r\n</header>"
+                  },
+                  "nu aveti dreptul de incarcare": {
+                    "summary": "lispsa drepturi",
+                    "description": "nu aveti dreptul de incarcare",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121036\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Nu exista niciun CIF pentru care sa aveti drept in SPV\"/>\r\n</header>"
+                  },
+                  "nu aveti dreptul de incarcare pentru cif-ul specificat in request": {
+                    "summary": "lispsa drepturi cif",
+                    "description": "nu aveti dreptul de incarcare pentru cif-ul specificat in request",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121034\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Nu aveti drept in SPV pentru CIF=1234\"/>\r\n</header>"
+                  },
+                  "fisierul transmis nu respecta structura UBL sau CII": {
+                    "summary": "fisier transmis invalid",
+                    "description": "fisierul transmis nu respecta structura UBL sau CII",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051144\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Fisierul transmis nu este valid. org.xml.sax.SAXParseException; lineNumber: 15; columnNumber: 155; cvc-elt.1.a: Cannot find the declaration of element 'Invoice1'. \"/>\r\n</header>"
+                  },
+                  "parametrul extern este completat dar este invalid": {
+                    "summary": "parametrul extern invalid",
+                    "description": "parametrul extern este completat dar este invalid",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202407041615\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Daca parametrul extern trebuie completat, valoarea acceptata este DA\"/>\r\n</header>"
+                  },
+                  "parametrul autofactura este completat dar este invalid": {
+                    "summary": "parametrul autofactura invalid",
+                    "description": "parametrul autofactura este completat dar este invalid",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202401260957\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Daca parametrul autofacturare trebuie completat, valoarea acceptata este DA\"/>\r\n</header>"
+                  },
+                  "parametrul executare este completat dar este invalid": {
+                    "summary": "parametrul executare invalid",
+                    "description": "parametrul executare este completat dar este invalid",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202408041615\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Daca parametrul executare trebuie completat, valoarea acceptata este DA\"/>\r\n</header>"
+                  },
+                  "parametrul executare este completat dar cif-ul nu este inregistrat in Registrul RO e-Factura executari silite": {
+                    "summary": "parametrul executare=DA, cif nu apare in Registrul RO e-Factura executari silite",
+                    "description": "parametrul executare este completat dar cif-ul nu este inregistrat in Registrul RO e-Factura executari silite",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202408071704\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"CIF introdus= 1234 nu este inregistrat in Registrul RO e-Factura executari silite\"/>\r\n</header>"
+                  },
+                  "a fost atinsa limita de apeluri zilnice": {
+                    "summary": "limita apeluri zilnice atinsa",
+                    "description": "a fost atinsa limita de apeluri zilnice",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202401260957\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"S-au incarcat deja 1000 de mesaje de tip RASP pentru cui=1234 in cursul zile\"/>\r\n</header>"
+                  },
+                  "eroare tehnica": {
+                    "summary": "eroare tehnica",
+                    "description": "eroare tehnica",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121034\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"A aparut o eroare tehnica. Cod: XXX\"/>\r\n</header>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitare incorecta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralErrorMessage"
+                },
+                "examples": {
+                  "nu ati atasat nimic in request body": {
+                    "summary": "lipsa request body",
+                    "description": "nu ati atasat nimic in request body",
+                    "value": {
+                      "timestamp": "05-08-2021 12:04:01",
+                      "status": 400,
+                      "error": "Bad Request",
+                      "message": "Trebuie sa aveti atasat in request un fisier de tip xml"
+                    }
+                  },
+                  "nu ati completat parametrul standard sau cif": {
+                    "summary": "lipsa parametrii standard sau cif",
+                    "description": "nu ati completat parametrul standard sau cif",
+                    "value": {
+                      "timestamp": "05-08-2021 12:04:01",
+                      "status": 400,
+                      "error": "Bad Request",
+                      "message": "Parametrii standard si cif sunt obligatorii"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralErrorMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/upload": {
+      "post": {
+        "tags": [
+          "EFactura Upload"
+        ],
+        "operationId": "handleRequest",
+        "parameters": [
+          {
+            "name": "standard",
+            "in": "query",
+            "description": "Specifica tipul xml-ului ce trebuie transmis. Valorile acceptate sunt UBL, CN, CII sau RASP",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "UBL"
+          },
+          {
+            "name": "cif",
+            "in": "query",
+            "description": "Specifica CIF-ul la care va ajunge eroarea in cazul in care nu se poate identifica vanzatorul in XML-ul facturii",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": 8000000000
+          },
+          {
+            "name": "extern",
+            "in": "query",
+            "description": "Folosit doar daca cumparatorul nu este din ROMANIA. Parametrul poate sa lipseasca, iar valoare acceptata este DA",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "DA"
+          },
+          {
+            "name": "autofactura",
+            "in": "query",
+            "description": "Folosit doar daca se emite factura de catre beneficiar in numele furnizorului. Parametrul poate sa lipseasca, iar valoare acceptata este DA",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "DA"
+          },
+          {
+            "name": "executare",
+            "in": "query",
+            "description": "Folosit de catre organul de executare pentru depunerea facturii in numele debitorului. Parametrul poate sa lipseasca, iar valoare acceptata este DA",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "DA"
+          }
+        ],
+        "requestBody": {
+          "description": "Trebuie atasat un fisier de tip xml",
+          "content": {
+            "*/*": {
+              "schema": {
+                "type": "string"
+              },
+              "examples": {
+                "structura xml pentru UBL": {
+                  "summary": "UBL",
+                  "description": "structura xml pentru UBL",
+                  "value": ""
+                },
+                "structura xml pentru CN": {
+                  "summary": "CN",
+                  "description": "structura xml pentru CN",
+                  "value": ""
+                },
+                "structura xml pentru CII": {
+                  "summary": "CII",
+                  "description": "structura xml pentru CII",
+                  "value": ""
+                },
+                "structura xml pentru RASP": {
+                  "summary": "RASP",
+                  "description": "structura xml pentru RASP",
+                  "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:reqMesaj:v1\" index_incarcare=\"191823\" message=\"mesaj de test, standard RASP\"/>"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Operatie realizata cu succes",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/EfacturaXmlHeader"
+                },
+                "examples": {
+                  "factura a fost incarcata cu succes": {
+                    "summary": "depunere cu succes",
+                    "description": "factura a fost incarcata cu succes",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051140\" ExecutionStatus=\"0\" index_incarcare=\"3828\"/>"
+                  },
+                  "nu a fost specificat un standard bun": {
+                    "summary": "standard invalid",
+                    "description": "nu a fost specificat un standard bun",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051144\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Valorile acceptate pentru parametrul standard sunt UBL, CN, CII sau RASP\"/>\r\n</header>"
+                  },
+                  "marimea fisierului estre prea mare": {
+                    "summary": "dimensiune fisier prea mare",
+                    "description": "marimea fisierului estre prea mare",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051144\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Marime fisier transmis mai mare de 10 MB.\"/>\r\n</header>"
+                  },
+                  "cif-ul trebuie sa fie numeric": {
+                    "summary": "cif invalid",
+                    "description": "cif-ul trebuie sa fie numeric",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121019\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"CIF introdus= 123a nu este un numar\"/>\r\n</header>"
+                  },
+                  "nu aveti dreptul de incarcare": {
+                    "summary": "lispsa drepturi",
+                    "description": "nu aveti dreptul de incarcare",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121036\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Nu exista niciun CIF pentru care sa aveti drept in SPV\"/>\r\n</header>"
+                  },
+                  "nu aveti dreptul de incarcare pentru cif-ul specificat in request": {
+                    "summary": "lispsa drepturi cif",
+                    "description": "nu aveti dreptul de incarcare pentru cif-ul specificat in request",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121034\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Nu aveti drept in SPV pentru CIF=1234\"/>\r\n</header>"
+                  },
+                  "fisierul transmis nu respecta structura UBL sau CII": {
+                    "summary": "fisier transmis invalid",
+                    "description": "fisierul transmis nu respecta structura UBL sau CII",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202108051144\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Fisierul transmis nu este valid. org.xml.sax.SAXParseException; lineNumber: 15; columnNumber: 155; cvc-elt.1.a: Cannot find the declaration of element 'Invoice1'. \"/>\r\n</header>"
+                  },
+                  "parametrul extern este completat dar este invalid": {
+                    "summary": "parametrul extern invalid",
+                    "description": "parametrul extern este completat dar este invalid",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202407041615\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Daca parametrul extern trebuie completat, valoarea acceptata este DA\"/>\r\n</header>"
+                  },
+                  "parametrul autofactura este completat dar este invalid": {
+                    "summary": "parametrul autofactura invalid",
+                    "description": "parametrul autofactura este completat dar este invalid",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202401260957\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Daca parametrul autofacturare trebuie completat, valoarea acceptata este DA\"/>\r\n</header>"
+                  },
+                  "parametrul executare este completat dar este invalid": {
+                    "summary": "parametrul executare invalid",
+                    "description": "parametrul executare este completat dar este invalid",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202408041615\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"Daca parametrul executare trebuie completat, valoarea acceptata este DA\"/>\r\n</header>"
+                  },
+                  "parametrul executare este completat dar cif-ul nu este inregistrat in Registrul RO e-Factura executari silite": {
+                    "summary": "parametrul executare=DA, cif nu apare in Registrul RO e-Factura executari silite",
+                    "description": "parametrul executare este completat dar cif-ul nu este inregistrat in Registrul RO e-Factura executari silite",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202408071704\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"CIF introdus= 1234 nu este inregistrat in Registrul RO e-Factura executari silite\"/>\r\n</header>"
+                  },
+                  "a fost atinsa limita de apeluri zilnice": {
+                    "summary": "limita apeluri zilnice atinsa",
+                    "description": "a fost atinsa limita de apeluri zilnice",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202401260957\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"S-au incarcat deja 1000 de mesaje de tip RASP pentru cui=1234 in cursul zile\"/>\r\n</header>"
+                  },
+                  "eroare tehnica": {
+                    "summary": "eroare tehnica",
+                    "description": "eroare tehnica",
+                    "value": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\r\n<header xmlns=\"mfp:anaf:dgti:spv:respUploadFisier:v1\" dateResponse=\"202210121034\" ExecutionStatus=\"1\">\r\n    <Errors errorMessage=\"A aparut o eroare tehnica. Cod: XXX\"/>\r\n</header>"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitare incorecta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralErrorMessage"
+                },
+                "examples": {
+                  "nu ati atasat nimic in request body": {
+                    "summary": "lipsa request body",
+                    "description": "nu ati atasat nimic in request body",
+                    "value": {
+                      "timestamp": "05-08-2021 12:04:01",
+                      "status": 400,
+                      "error": "Bad Request",
+                      "message": "Trebuie sa aveti atasat in request un fisier de tip xml"
+                    }
+                  },
+                  "nu ati completat parametrul standard sau cif": {
+                    "summary": "lipsa parametrii standard sau cif",
+                    "description": "nu ati completat parametrul standard sau cif",
+                    "value": {
+                      "timestamp": "05-08-2021 12:04:01",
+                      "status": 400,
+                      "error": "Bad Request",
+                      "message": "Parametrii standard si cif sunt obligatorii"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneralErrorMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GeneralErrorMessage": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "eroare": {
+            "type": "string"
+          },
+          "titlu": {
+            "type": "string"
+          }
+        }
+      },
+      "EfacturaJsonErrorMessage": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "EfacturaResponseHeader": {
+        "required": [
+          "stare",
+          "trace_id"
+        ],
+        "type": "object",
+        "properties": {
+          "stare": {
+            "type": "string"
+          },
+          "Messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EfacturaJsonErrorMessage"
+            }
+          },
+          "trace_id": {
+            "type": "string"
+          }
+        }
+      },
+      "EfacturaXmlErrorMessage": {
+        "type": "object",
+        "properties": {
+          "errorMessage": {
+            "type": "string",
+            "xml": {
+              "attribute": true
+            }
+          }
+        }
+      },
+      "EfacturaXmlHeader": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "xml": {
+              "name": "Errors"
+            },
+            "items": {
+              "$ref": "#/components/schemas/EfacturaXmlErrorMessage"
+            }
+          },
+          "stare": {
+            "type": "string",
+            "xml": {
+              "attribute": true
+            }
+          },
+          "idDescarcare": {
+            "type": "string",
+            "xml": {
+              "name": "id_descarcare",
+              "attribute": true
+            }
+          },
+          "dateResponse": {
+            "type": "string",
+            "xml": {
+              "attribute": true
+            }
+          },
+          "executionStatus": {
+            "type": "integer",
+            "format": "int32",
+            "xml": {
+              "name": "ExecutionStatus",
+              "attribute": true
+            }
+          },
+          "indexIncarcare": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "index_incarcare",
+              "attribute": true
+            }
+          }
+        },
+        "xml": {
+          "name": "header"
+        }
+      },
+      "EfacturaDetailedMessage": {
+        "type": "object",
+        "properties": {
+          "data_creare": {
+            "type": "string"
+          },
+          "cif": {
+            "type": "string"
+          },
+          "id_solicitare": {
+            "type": "string"
+          },
+          "detalii": {
+            "type": "string"
+          },
+          "tip": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

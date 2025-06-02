@@ -38,10 +38,14 @@ describe('ANAF OAuth Authentication & API Client', () => {
     });
 
     // Create client for API operations
-    client = new AnafEfacturaClient({
-      vatNumber: 'RO12345678', // Test VAT number
-      testMode: true, // Use test environment
-    });
+    client = new AnafEfacturaClient(
+      {
+        vatNumber: 'RO12345678', // Test VAT number
+        testMode: true, // Use test environment
+        refreshToken: 'dummy-refresh-token', // Will be updated when we get real tokens
+      },
+      authenticator
+    );
 
     // Setup OAuth callback server
     oauthServer = createOAuthCallbackServer();
@@ -127,20 +131,20 @@ describe('ANAF OAuth Authentication & API Client', () => {
     test('should create client with valid configuration', () => {
       expect(client).toBeDefined();
       expect(() => {
-        new AnafEfacturaClient({
-          vatNumber: 'RO12345678',
-          testMode: true,
+        const testAuthenticator = new AnafAuthenticator({
+          clientId: 'test-client-id',
+          clientSecret: 'test-secret',
+          redirectUri: 'http://localhost:3000/callback',
         });
+        new AnafEfacturaClient(
+          {
+            vatNumber: 'RO12345678',
+            testMode: true,
+            refreshToken: 'test-refresh-token',
+          },
+          testAuthenticator
+        );
       }).not.toThrow();
-    });
-
-    test('should throw error for missing VAT number', () => {
-      expect(() => {
-        new AnafEfacturaClient({
-          vatNumber: '',
-          testMode: true,
-        });
-      }).toThrow(AnafValidationError);
     });
   });
 

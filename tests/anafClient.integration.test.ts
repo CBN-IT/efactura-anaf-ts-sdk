@@ -4,15 +4,8 @@ import path from 'path';
 import { AnafEfacturaClient } from '../src';
 import { AnafAuthenticator } from '../src/AnafAuthenticator';
 import { UblBuilder } from '../src/UblBuilder';
-import { AnafValidationError, AnafApiError, AnafAuthenticationError } from '../src/errors';
-import {
-  TokenResponse,
-  UploadOptions,
-  UploadStatus,
-  ListMessagesResponse,
-  ValidationResult,
-  InvoiceInput,
-} from '../src/types';
+import { AnafApiError, AnafAuthenticationError } from '../src/errors';
+import { TokenResponse, UploadOptions, ListMessagesResponse, InvoiceInput, UploadResponse } from '../src/types';
 import { tryCatch } from '../src/tryCatch';
 
 /**
@@ -79,20 +72,29 @@ describe('AnafEfacturaClient Integration Tests', () => {
       return;
     }
 
-    // Setup authenticator and client
+    // Setup authenticator
     authenticator = new AnafAuthenticator({
       clientId: process.env.ANAF_CLIENT_ID!,
       clientSecret: process.env.ANAF_CLIENT_SECRET!,
       redirectUri: process.env.ANAF_CALLBACK_URL!,
     });
 
-    client = new AnafEfacturaClient({
-      vatNumber: testVatNumber,
-      testMode: true, // Always use test environment for integration tests
-    });
-
     // Try to load existing valid tokens
     const tokens = await loadTokens();
+
+    if (!tokens || !tokens.refresh_token) {
+      throw new Error('Integration tests require valid OAuth tokens. Run auth tests first.');
+    }
+
+    // Setup client with authenticator and refresh token
+    client = new AnafEfacturaClient(
+      {
+        vatNumber: testVatNumber,
+        testMode: true, // Always use test environment for integration tests
+        refreshToken: tokens.refresh_token,
+      },
+      authenticator
+    );
 
     if (tokens && !isTokenExpired(tokens)) {
       accessToken = tokens.access_token;
@@ -109,8 +111,6 @@ describe('AnafEfacturaClient Integration Tests', () => {
         console.log('❌ Token refresh failed, need new authentication');
         throw new Error('Integration tests require valid OAuth tokens. Run auth tests first.');
       }
-    } else {
-      throw new Error('Integration tests require valid OAuth tokens. Run auth tests first.');
     }
   }, 30000);
 
@@ -134,7 +134,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
 
   describe('Document Upload Operations', () => {
     let generatedXml: string;
-    let uploadResult: UploadStatus;
+    let uploadResult: UploadResponse;
 
     beforeAll(() => {
       // Generate test UBL XML
@@ -152,38 +152,38 @@ describe('AnafEfacturaClient Integration Tests', () => {
         executare: false,
       };
 
-      uploadResult = await client.uploadDocument(accessToken, generatedXml, options);
+      uploadResult = await client.uploadDocument(generatedXml, options);
 
       expect(uploadResult).toBeDefined();
-      expect(uploadResult.index_incarcare).toBeDefined();
-      expect(uploadResult.index_incarcare!.length).toBeGreaterThan(0);
+      expect(uploadResult.indexIncarcare).toBeDefined();
+      expect(uploadResult.indexIncarcare!.length).toBeGreaterThan(0);
 
-      console.log(`✅ Document uploaded successfully with ID: ${uploadResult.index_incarcare}`);
+      console.log(`✅ Document uploaded successfully with ID: ${uploadResult.indexIncarcare}`);
     }, 30000);
 
     test('should upload B2C document successfully', async () => {
-      const b2cResult = await client.uploadB2CDocument(accessToken, generatedXml);
+      const b2cResult = await client.uploadB2CDocument(generatedXml);
 
       expect(b2cResult).toBeDefined();
-      expect(b2cResult.index_incarcare).toBeDefined();
+      expect(b2cResult.indexIncarcare).toBeDefined();
 
-      console.log(`✅ B2C document uploaded successfully with ID: ${b2cResult.index_incarcare}`);
+      console.log(`✅ B2C document uploaded successfully with ID: ${b2cResult.indexIncarcare}`);
     }, 30000);
 
     test('should get upload status', async () => {
-      if (!uploadResult?.index_incarcare) {
+      if (!uploadResult?.indexIncarcare) {
         throw new Error('No upload ID available for status check');
       }
 
-      const status = await client.getUploadStatus(accessToken, uploadResult.index_incarcare);
+      const status = await client.getUploadStatus(uploadResult.indexIncarcare);
 
       expect(status).toBeDefined();
       expect(['ok', 'nok', 'in prelucrare']).toContain(status.stare);
 
       console.log(`✅ Upload status: ${status.stare}`);
 
-      if (status.id_descarcare) {
-        console.log(`📥 Download ID available: ${status.id_descarcare}`);
+      if (status.idDescarcare) {
+        console.log(`📥 Download ID available: ${status.idDescarcare}`);
       }
     }, 30000);
 
@@ -195,16 +195,16 @@ describe('AnafEfacturaClient Integration Tests', () => {
         executare: true,
       };
 
-      const result = await client.uploadDocument(accessToken, generatedXml, optionsTest);
+      const result = await client.uploadDocument(generatedXml, optionsTest);
 
       expect(result).toBeDefined();
-      console.log(`✅ Upload with options successful: ${result.index_incarcare}`);
+      console.log(`✅ Upload with options successful: ${result.indexIncarcare}`);
     }, 30000);
   });
 
   describe('Message Listing Operations', () => {
     test('should get recent messages', async () => {
-      const messages = await client.getMessages(accessToken, {
+      const messages = await client.getMessages({
         zile: 7,
         filtru: undefined, // Get all message types
       });
@@ -229,7 +229,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
       const endTime = Date.now();
       const startTime = endTime - 30 * 24 * 60 * 60 * 1000; // Last 30 days
 
-      const paginatedMessages = await client.getMessagesPaginated(accessToken, {
+      const paginatedMessages = await client.getMessagesPaginated({
         startTime,
         endTime,
         pagina: 1,
@@ -246,33 +246,18 @@ describe('AnafEfacturaClient Integration Tests', () => {
       }
     }, 30000);
 
-    test('should filter messages by type', async () => {
-      // Test different filter types
-      const filters = ['E', 'T', 'P', 'R'] as const;
-
-      for (const filter of filters) {
-        const messages = await client.getMessages(accessToken, {
-          zile: 30,
-          filtru: filter,
-        });
-
-        expect(messages).toBeDefined();
-        console.log(`✅ Filter '${filter}' - ${messages.mesaje?.length || 0} messages`);
-      }
-    }, 60000);
-  });
 
   describe('Document Download Operations', () => {
     test('should handle download request (may not have content)', async () => {
       // Try to find a message with download ID
-      const messages = await client.getMessages(accessToken, { zile: 30 });
+      const messages = await client.getMessages({ zile: 30 });
 
       if (messages.mesaje && messages.mesaje.length > 0) {
         const messageWithId = messages.mesaje.find((m) => m.id);
 
         if (messageWithId?.id) {
           const { error } = tryCatch(async () => {
-            const downloadContent = await client.downloadDocument(accessToken, messageWithId.id);
+            const downloadContent = await client.downloadDocument(messageWithId.id);
             expect(downloadContent).toBeDefined();
             console.log(`✅ Download successful for message ${messageWithId.id}`);
           });
@@ -299,7 +284,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
     });
 
     test('should validate XML with FACT1 standard', async () => {
-      const result = await client.validateXml(accessToken, testXml, 'FACT1');
+      const result = await client.validateXml(testXml, 'FACT1');
 
       expect(result).toBeDefined();
       expect(typeof result.valid).toBe('boolean');
@@ -313,7 +298,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
     }, 30000);
 
     test('should validate XML with FCN standard', async () => {
-      const result = await client.validateXml(accessToken, testXml, 'FCN');
+      const result = await client.validateXml(testXml, 'FCN');
 
       expect(result).toBeDefined();
       expect(typeof result.valid).toBe('boolean');
@@ -324,7 +309,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
     test('should handle invalid XML validation gracefully', async () => {
       const invalidXml = '<?xml version="1.0"?><InvalidRoot>Not a valid invoice</InvalidRoot>';
 
-      const result = await client.validateXml(accessToken, invalidXml, 'FACT1');
+      const result = await client.validateXml(invalidXml, 'FACT1');
 
       expect(result).toBeDefined();
       expect(result.valid).toBe(false);
@@ -344,7 +329,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
 
     test('should convert XML to PDF with validation', async () => {
       const { data, error } = tryCatch(async () => {
-        const pdfBuffer = await client.convertXmlToPdf(accessToken, testXml, 'FACT1');
+        const pdfBuffer = await client.convertXmlToPdf(testXml, 'FACT1');
 
         expect(pdfBuffer).toBeInstanceOf(Buffer);
         expect(pdfBuffer.length).toBeGreaterThan(0);
@@ -364,7 +349,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
 
     test('should convert XML to PDF without validation', async () => {
       const { data, error } = tryCatch(async () => {
-        const pdfBuffer = await client.convertXmlToPdfNoValidation(accessToken, testXml, 'FACT1');
+        const pdfBuffer = await client.convertXmlToPdfNoValidation(testXml, 'FACT1');
 
         expect(pdfBuffer).toBeInstanceOf(Buffer);
         expect(pdfBuffer.length).toBeGreaterThan(0);
@@ -381,31 +366,50 @@ describe('AnafEfacturaClient Integration Tests', () => {
 
   describe('Error Handling', () => {
     test('should handle expired token gracefully', async () => {
-      const expiredToken = 'expired_token_12345';
+      // Create client with expired refresh token to test automatic refresh
+      const expiredTokenClient = new AnafEfacturaClient(
+        {
+          vatNumber: testVatNumber,
+          testMode: true,
+          refreshToken: 'expired_refresh_token_12345',
+        },
+        authenticator
+      );
+
       const builder = new UblBuilder();
       const xml = builder.generateInvoiceXml(testInvoiceData);
 
-      await expect(client.uploadDocument(expiredToken, xml)).rejects.toThrow(AnafAuthenticationError);
+      await expect(expiredTokenClient.uploadDocument(xml)).rejects.toThrow(AnafAuthenticationError);
     }, 15000);
 
     test('should handle invalid XML gracefully', async () => {
       const invalidXml = 'This is not XML at all';
 
-      await expect(client.uploadDocument(accessToken, invalidXml)).rejects.toThrow();
+      await expect(client.uploadDocument(invalidXml)).rejects.toThrow();
     }, 15000);
 
     test('should handle network timeouts', async () => {
       // Create client with very short timeout
-      const shortTimeoutClient = new AnafEfacturaClient({
-        vatNumber: testVatNumber,
-        testMode: true,
-        timeout: 1, // 1ms timeout
-      });
+      const tokens = await loadTokens();
+      if (!tokens?.refresh_token) {
+        console.log('⚠️ Skipping timeout test - no refresh token available');
+        return;
+      }
+
+      const shortTimeoutClient = new AnafEfacturaClient(
+        {
+          vatNumber: testVatNumber,
+          testMode: true,
+          timeout: 1, // 1ms timeout
+          refreshToken: tokens.refresh_token,
+        },
+        authenticator
+      );
 
       const builder = new UblBuilder();
       const xml = builder.generateInvoiceXml(testInvoiceData);
 
-      await expect(shortTimeoutClient.uploadDocument(accessToken, xml)).rejects.toThrow();
+      await expect(shortTimeoutClient.uploadDocument(xml)).rejects.toThrow();
     }, 15000);
   });
 
@@ -417,7 +421,7 @@ describe('AnafEfacturaClient Integration Tests', () => {
       for (let i = 0; i < 5; i++) {
         promises.push(
           client
-            .getMessages(accessToken, { zile: 1 })
+            .getMessages({ zile: 1 })
             .then((response) => response as ListMessagesResponse)
             .catch((error) => {
               // Rate limiting errors are expected

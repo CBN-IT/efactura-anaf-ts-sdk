@@ -5,6 +5,8 @@
  * for interacting with the Romanian ANAF e-Factura system.
  */
 
+import { StandardType } from './types';
+
 // =============================================================================
 // Base API Paths
 // =============================================================================
@@ -174,27 +176,6 @@ export const getBasePath = (authMode: 'oauth' | 'cert' = 'oauth', testMode: bool
   return testMode ? BASE_PATH_OAUTH_TEST : BASE_PATH_OAUTH_PROD;
 };
 
-/**
- * Get the appropriate validation URL based on auth mode
- */
-export const getValidationUrl = (authMode: 'oauth' | 'cert' = 'oauth'): string => {
-  return authMode === 'cert' ? VALIDATE_XML_CERT_URL : VALIDATE_XML_OAUTH_URL;
-};
-
-/**
- * Get the appropriate XML to PDF URL based on auth mode
- */
-export const getXmlToPdfUrl = (authMode: 'oauth' | 'cert' = 'oauth'): string => {
-  return authMode === 'cert' ? XML_TO_PDF_CERT_URL : XML_TO_PDF_OAUTH_URL;
-};
-
-/**
- * Get the appropriate signature validation URL based on auth mode
- */
-export const getSignatureValidationUrl = (authMode: 'oauth' | 'cert' = 'oauth'): string => {
-  return authMode === 'cert' ? VALIDATE_SIGNATURE_CERT_URL : VALIDATE_SIGNATURE_OAUTH_URL;
-};
-
 // =============================================================================
 // Query Parameter Builders
 // =============================================================================
@@ -205,7 +186,7 @@ export const getSignatureValidationUrl = (authMode: 'oauth' | 'cert' = 'oauth'):
 export const buildUploadParams = (
   vatNumber: string,
   options: {
-    standard?: string;
+    standard?: StandardType;
     extern?: boolean;
     autofactura?: boolean;
     executare?: boolean;

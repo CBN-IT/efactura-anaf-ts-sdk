@@ -56,6 +56,32 @@ export const mockTestData = {
     <Errors errorMessage="Invalid XML format"/>
 </header>`,
 
+    // Specific upload error examples from OpenAPI spec
+    uploadErrorInvalidStandard: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:spv:respUploadFisier:v1" dateResponse="202312011200" ExecutionStatus="1">
+    <Errors errorMessage="Valorile acceptate pentru parametrul standard sunt UBL, CN, CII sau RASP"/>
+</header>`,
+
+    uploadErrorFileTooLarge: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:spv:respUploadFisier:v1" dateResponse="202312011200" ExecutionStatus="1">
+    <Errors errorMessage="Marime fisier transmis mai mare de 10 MB."/>
+</header>`,
+
+    uploadErrorInvalidCif: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:spv:respUploadFisier:v1" dateResponse="202312011200" ExecutionStatus="1">
+    <Errors errorMessage="CIF introdus= 123a nu este un numar"/>
+</header>`,
+
+    uploadErrorNoRights: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:spv:respUploadFisier:v1" dateResponse="202312011200" ExecutionStatus="1">
+    <Errors errorMessage="Nu exista niciun CIF pentru care sa aveti drept in SPV"/>
+</header>`,
+
+    uploadErrorInvalidXmlStructure: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:spv:respUploadFisier:v1" dateResponse="202312011200" ExecutionStatus="1">
+    <Errors errorMessage="Fisierul transmis nu este valid. org.xml.sax.SAXParseException; lineNumber: 15; columnNumber: 155; cvc-elt.1.a: Cannot find the declaration of element 'Invoice1'. "/>
+</header>`,
+
     statusSuccess: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1" stare="ok" id_descarcare="67890"/>`,
 
@@ -64,6 +90,22 @@ export const mockTestData = {
 
     statusError: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1" stare="nok" id_descarcare="67890"/>`,
+
+    // Status error responses from OpenAPI examples
+    statusErrorNoRights: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1">
+  <Errors errorMessage="Nu aveti dreptul sa consultati starea acestui upload."/>
+</header>`,
+
+    statusErrorInvalidId: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1">
+  <Errors errorMessage="Id invalid pentru starea de upload."/>
+</header>`,
+
+    statusErrorDailyLimit: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<header xmlns="mfp:anaf:dgti:efactura:stareMesajFactura:v1">
+  <Errors errorMessage="Limita zilnica de interogari a fost depasita."/>
+</header>`,
   },
 
   // Mock JSON responses

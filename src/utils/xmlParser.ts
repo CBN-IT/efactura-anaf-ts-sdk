@@ -1,5 +1,5 @@
 import { create } from 'xmlbuilder2';
-import { UploadStatus } from '../types';
+import { UploadResponse, StatusResponse, ExecutionStatus, UploadStatusValue } from '../types';
 import { AnafXmlParsingError } from '../errors';
 import { tryCatch } from '../tryCatch';
 
@@ -12,65 +12,149 @@ import { tryCatch } from '../tryCatch';
  */
 
 /**
- * Parse XML response from ANAF upload or status operations
- * @param xmlString Raw XML response from ANAF
- * @returns Parsed status object
+ * Parse XML response from ANAF upload operations
+ *
+ * Upload success response format:
+ * <header ExecutionStatus="0" index_incarcare="3828" dateResponse="202108051140"/>
+ *
+ * Upload error response format:
+ * <header ExecutionStatus="1" dateResponse="202108051144">
+ *   <Errors errorMessage="Error message here"/>
+ * </header>
+ *
+ * @param xmlString Raw XML response from ANAF upload operations
+ * @returns Parsed upload response object
  * @throws {AnafXmlParsingError} If XML cannot be parsed or has unexpected structure
  */
-export function parseXmlResponse(xmlString: string): UploadStatus {
-  // Parse XML to object
+export function parseUploadResponse(xmlString: string): UploadResponse {
   const { data: doc, error } = tryCatch(() => {
-    return create(xmlString).toObject({ group: true }) as any;
+    const grouped = create(xmlString).toObject({ group: true }) as any;
+    const simple = create(xmlString).toObject() as any;
+    return { grouped, simple };
   });
 
   if (error) {
     throw new AnafXmlParsingError('Failed to parse XML response', xmlString);
   }
 
-  // Try to find the main response element - ANAF uses 'header' element
+  // Try to parse using grouped structure first
+  let result = tryParseUploadStructure(doc.grouped);
+  if (result) return result;
+
+  // Fallback to simple structure
+  result = tryParseUploadStructure(doc.simple);
+  if (result) return result;
+
+  throw new AnafXmlParsingError('Unknown or unexpected XML response structure', xmlString);
+}
+
+/**
+ * Try to parse upload XML structure
+ */
+function tryParseUploadStructure(doc: any): UploadResponse | null {
+  if (!doc) return null;
+
+  const header = doc.header || doc.Header;
+  if (!header) return null;
+
+  const content = Array.isArray(header) ? header[0] : header;
+  const attributes = content['@'] || content;
+
+  // Handle upload responses (have ExecutionStatus attribute)
+  if (attributes.ExecutionStatus !== undefined) {
+    const statusValue = Number(attributes.ExecutionStatus);
+    const result: UploadResponse = {
+      executionStatus: statusValue as ExecutionStatus,
+      indexIncarcare: attributes.index_incarcare ? String(attributes.index_incarcare) : undefined,
+      dateResponse: attributes.dateResponse ? String(attributes.dateResponse) : undefined,
+    };
+
+    if (statusValue === ExecutionStatus.Error) {
+      const errorElements = content.Errors ? (Array.isArray(content.Errors) ? content.Errors : [content.Errors]) : [];
+      result.errors = errorElements.map((err: any) => findErrorMessage(err) || '');
+    }
+
+    return result;
+  }
+
+  return null;
+}
+
+/**
+ * Parse XML response from ANAF status check operations
+ *
+ * Status success response format:
+ * <header stare="ok" id_descarcare="1234"/>
+ * <header stare="in prelucrare"/>
+ *
+ * Status error response format:
+ * <header><Errors errorMessage="Error message"/></header>
+ *
+ * @param xmlString Raw XML response from ANAF status operations
+ * @returns Parsed status response object
+ * @throws {AnafXmlParsingError} If XML cannot be parsed or has unexpected structure
+ */
+export function parseStatusResponse(xmlString: string): StatusResponse {
+  const { data: doc, error } = tryCatch(() => {
+    const grouped = create(xmlString).toObject({ group: true }) as any;
+    const simple = create(xmlString).toObject() as any;
+    return { grouped, simple };
+  });
+
+  if (error) {
+    throw new AnafXmlParsingError('Failed to parse XML response', xmlString);
+  }
+
+  // Try to parse using grouped structure first
+  let result = tryParseStatusStructure(doc.grouped);
+  if (result) return result;
+
+  // Fallback to simple structure
+  result = tryParseStatusStructure(doc.simple);
+  if (result) return result;
+
+  throw new AnafXmlParsingError('Unknown or unexpected XML response structure', xmlString);
+}
+
+/**
+ * Try to parse status XML structure
+ */
+function tryParseStatusStructure(doc: any): StatusResponse | null {
+  if (!doc) return null;
+
+  // Find the main response element - ANAF uses 'header' element
   const header = doc.header || doc.Header;
 
-  if (header) {
-    const content = Array.isArray(header) ? header[0] : header;
+  if (!header) {
+    return null;
+  }
 
-    // xmlbuilder2 stores attributes in '@' property when using { group: true }
-    const attributes = content['@'] || content;
+  const content = Array.isArray(header) ? header[0] : header;
 
-    // Handle upload response (contains index_incarcare)
-    if (attributes.index_incarcare) {
-      return {
-        index_incarcare: String(attributes.index_incarcare),
-      };
+  // xmlbuilder2 stores attributes in '@' property when using { group: true }
+  const attributes = content['@'] || content;
+
+  // Handle status responses (have stare attribute or id_descarcare)
+  if (attributes.stare || attributes.id_descarcare) {
+    const result: StatusResponse = {};
+
+    if (attributes.stare) {
+      result.stare = String(attributes.stare) as UploadStatusValue;
     }
 
-    // Handle status response (contains id_descarcare and/or stare)
-    if (attributes.id_descarcare || attributes.stare) {
-      return {
-        id_descarcare: attributes.id_descarcare ? String(attributes.id_descarcare) : undefined,
-        stare: attributes.stare ? String(attributes.stare) : undefined,
-      };
+    if (attributes.id_descarcare) {
+      result.idDescarcare = String(attributes.id_descarcare);
     }
 
-    // Handle error responses with ExecutionStatus
-    if (attributes.ExecutionStatus && attributes.ExecutionStatus !== '0') {
-      // Look for error message in child elements
-      const errorMessage =
-        content.Errors?.['@']?.errorMessage ||
-        content.Error?.['@']?.errorMessage ||
-        content.Errors?.errorMessage ||
-        content.Error?.errorMessage ||
-        'Upload failed';
-      return { eroare: errorMessage };
-    }
+    return result;
+  }
 
-    // If ExecutionStatus is 0, it's successful - look for other attributes
-    if (attributes.ExecutionStatus === '0') {
-      return {
-        index_incarcare: attributes.index_incarcare ? String(attributes.index_incarcare) : undefined,
-        id_descarcare: attributes.id_descarcare ? String(attributes.id_descarcare) : undefined,
-        stare: attributes.stare ? String(attributes.stare) : undefined,
-      };
-    }
+  // Handle error responses without ExecutionStatus (status endpoint errors)
+  const errors = content.Errors || content.errors || content.Error || content.error;
+  if (errors) {
+    const errorElements = Array.isArray(errors) ? errors : [errors];
+    const errorMessages = errorElements.map((err: any) => findErrorMessage(err) || 'Operation failed');
+    return { errors: errorMessages };
   }
 
   // Fallback: Try to find other common response structures
@@ -79,18 +163,11 @@ export function parseXmlResponse(xmlString: string): UploadStatus {
   if (raspuns) {
     const content = Array.isArray(raspuns) ? raspuns[0] : raspuns;
 
-    // Handle upload response (contains index_incarcare)
-    if (content.index_incarcare) {
-      return {
-        index_incarcare: extractTextValue(content.index_incarcare),
-      };
-    }
-
     // Handle status response (contains id_descarcare and/or stare)
     if (content.id_descarcare || content.stare) {
       return {
-        id_descarcare: content.id_descarcare ? extractTextValue(content.id_descarcare) : undefined,
-        stare: content.stare ? extractTextValue(content.stare) : undefined,
+        idDescarcare: content.id_descarcare ? extractTextValue(content.id_descarcare) : undefined,
+        stare: content.stare ? (extractTextValue(content.stare) as UploadStatusValue) : undefined,
       };
     }
 
@@ -98,28 +175,11 @@ export function parseXmlResponse(xmlString: string): UploadStatus {
     if (content.Error || content.eroare) {
       const errorDetail = content.Error || content.eroare;
       const errorMessage = errorDetail.mesaj ? extractTextValue(errorDetail.mesaj) : extractTextValue(errorDetail);
-      return { eroare: errorMessage };
-    }
-
-    // Try to extract from first available key (fallback)
-    const firstKey = Object.keys(content)[0];
-    if (firstKey && content[firstKey]) {
-      const innerObject = Array.isArray(content[firstKey]) ? content[firstKey][0] : content[firstKey];
-
-      if (typeof innerObject === 'object' && innerObject !== null) {
-        return {
-          index_incarcare: innerObject.index_incarcare ? extractTextValue(innerObject.index_incarcare) : undefined,
-          id_descarcare: innerObject.id_descarcare ? extractTextValue(innerObject.id_descarcare) : undefined,
-          stare: innerObject.stare ? extractTextValue(innerObject.stare) : undefined,
-          eroare: innerObject.eroare ? extractTextValue(innerObject.eroare) : undefined,
-          mesaj: innerObject.mesaj ? extractTextValue(innerObject.mesaj) : undefined,
-        };
-      }
+      return { errors: [errorMessage] };
     }
   }
 
-  // If we can't parse the structure, throw an error
-  throw new AnafXmlParsingError('Unknown or unexpected XML response structure', xmlString);
+  return null;
 }
 
 /**
@@ -137,6 +197,44 @@ function extractTextValue(element: any): string {
     return String(element._);
   }
   return String(element);
+}
+
+/**
+ * Recursively search for errorMessage in an object structure
+ * @param obj Object to search in
+ * @returns Found error message or null
+ */
+function findErrorMessage(obj: any): string | null {
+  if (!obj || typeof obj !== 'object') {
+    return null;
+  }
+
+  // Direct check for errorMessage attribute/property
+  if (obj.errorMessage) {
+    return String(obj.errorMessage);
+  }
+
+  // Check in attributes object
+  if (obj['@'] && obj['@'].errorMessage) {
+    return String(obj['@'].errorMessage);
+  }
+
+  // Search through all properties
+  for (const [key, value] of Object.entries(obj)) {
+    if (key === 'errorMessage' || key.endsWith('errorMessage')) {
+      return String(value);
+    }
+
+    // Recursively search in nested objects
+    if (typeof value === 'object' && value !== null) {
+      const found = findErrorMessage(value);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -168,9 +266,11 @@ export function parseJsonResponse<T = any>(response: any): T {
  */
 export function isErrorResponse(response: any): boolean {
   return !!(
-    response?.eroare ||
+    response?.errors ||
     response?.Error ||
     response?.error ||
+    response?.eroare ||
+    response?.executionStatus === ExecutionStatus.Error ||
     (response?.stare && response.stare.toLowerCase() === 'nok')
   );
 }
@@ -181,9 +281,25 @@ export function isErrorResponse(response: any): boolean {
  * @returns Error message or null if no error found
  */
 export function extractErrorMessage(response: any): string | null {
-  if (response?.eroare) return response.eroare;
+  if (response?.errors && Array.isArray(response.errors) && response.errors.length > 0) {
+    return response.errors.join('; ');
+  }
   if (response?.Error?.mesaj) return response.Error.mesaj;
   if (response?.error) return response.error;
+  if (response?.eroare) return response.eroare; // Romanian error field used in list API responses
   if (response?.mesaj && response?.stare === 'nok') return response.mesaj;
   return null;
+}
+
+/**
+ * Legacy function for backward compatibility - delegates to appropriate parser
+ * @deprecated Use parseUploadResponse or parseStatusResponse instead
+ */
+export function parseXmlResponse(xmlString: string): UploadResponse | StatusResponse {
+  // Try to determine response type by looking for ExecutionStatus attribute
+  if (xmlString.includes('ExecutionStatus=')) {
+    return parseUploadResponse(xmlString);
+  } else {
+    return parseStatusResponse(xmlString);
+  }
 }

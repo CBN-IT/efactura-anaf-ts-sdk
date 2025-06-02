@@ -1,0 +1,403 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "eFactura API Suite",
+    "description": "A comprehensive suite of APIs for eFactura operations, including XML signature validation, message status retrieval, message listing, invoice upload and download, and XML to PDF transformation.",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "XML Signature Validation",
+      "description": "API for validating electronic signatures on electronic invoices."
+    },
+    {
+      "name": "EFactura Message Status",
+      "description": "API for retrieving the processing status of electronic invoice messages."
+    },
+    {
+      "name": "EFactura Message List",
+      "description": "API for listing electronic invoice messages with various filtering options."
+    },
+    {
+      "name": "EFactura Upload",
+      "description": "API for uploading electronic invoice XML files."
+    },
+    {
+      "name": "eFactura Download",
+      "description": "Descarcare factura API"
+    },
+    {
+      "name": "EFactura Validation",
+      "description": "EFactura Validare API"
+    },
+    {
+      "name": "EFacturaXmlToPdf",
+      "description": "EFactura XmlToPdf API"
+    }
+  ],
+  "paths": {
+    "/validare/{standard}": {
+      "post": {
+        "tags": [
+          "EFactura Validation"
+        ],
+        "summary": "Validare XML",
+        "operationId": "validare",
+        "parameters": [
+          {
+            "name": "standard",
+            "in": "path",
+            "description": "Specifica tipul xml-ului ce trebuie transmis. Valorile acceptate sunt FACT1 si FCN.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "FACT1"
+          }
+        ],
+        "requestBody": {
+          "description": "Continutul fisierul xml",
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "examples": {
+                "FACT1": {
+                  "description": "structura xml pentru FACT1",
+                  "value": ""
+                },
+                "FCN": {
+                  "description": "structura xml pentru FCN",
+                  "value": ""
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Response code 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EfacturaResponseHeader"
+                },
+                "examples": {
+                  "validare succes": {
+                    "description": "xml-ul a trecut cu succes de validare",
+                    "value": {
+                      "stare": "ok",
+                      "trace_id": "c8c9da20-843f-4130-91d1-4ee8b0baaa30"
+                    }
+                  },
+                  "validare esuata": {
+                    "description": "sunt erori in continutul xml-ului",
+                    "value": {
+                      "stare": "nok",
+                      "Messages": [
+                        {
+                          "message": "E: validari globale  SCHEMATRON   eroare: [BR-CO-09]-The Seller VAT identifier (BT-31), the Seller tax representative VAT identifier (BT-63) and the Buyer VAT identifier (BT-48) shall have a prefix in accordance with ISO code ISO 3166-1 alpha-2 by which the country of issue may be identified. Nevertheless, Greece may use the prefix ‘EL’."
+                        },
+                        {
+                          "message": "E: validari globale  SCHEMATRON   eroare: [BR-RO-110]-Daca Codul ţării vânzătorului (BT-40) este  RO , atunci Subdiviziunea ţării vânzătorului (BT-39) trebuie să fie codificată folosind lista de coduri ISO 3166-2:RO (ex.  RO-B  pentru Municipiul Bucuresti,  RO-AB  pentru judetul Alba...).     #If the Seller's country Code (BT-40) is  RO , then the Seller's country subdivision (BT-39) must be coded using the ISO 3166-2: RO code list (ex.  RO-B  for Bucharest,  RO-AB  for Alba County...)."
+                        },
+                        {
+                          "message": "E: AccountingSupplierParty (1) sectiune Party (1) sectiune PartyTaxScheme (1) sectiune CompanyID (1)  eroare regula: R_BT_32_cui: Cui vanzator incorect / validare CUI (1234) "
+                        }
+                      ],
+                      "trace_id": "2c9b28f2-be33-4d55-a6ac-f5f5fed01e67"
+                    }
+                  },
+                  "standard invalid": {
+                    "description": "nu a fost specificat un standard bun",
+                    "value": {
+                      "stare": "nok",
+                      "Messages": [
+                        {
+                          "message": "Valorile acceptate pentru parametrul standard sunt FACT1 si FCN"
+                        }
+                      ],
+                      "trace_id": "4506b709-92d1-4efe-b286-e652624ba2fb"
+                    }
+                  },
+                  "dimensiune prea mare": {
+                    "description": "dimensiunea fisierului incarcat nu trebuie sa depaseasca 5MB",
+                    "value": {
+                      "stare": "nok",
+                      "Messages": [
+                        {
+                          "message": "Marime fisier transmis mai mare de 5 MB."
+                        }
+                      ],
+                      "trace_id": "1ce79035-758e-4454-b811-d1c0a04aedc2"
+                    }
+                  },
+                  "eroare tehica": {
+                    "description": "din motive tehnice requestul nu a putut fi procesat",
+                    "value": {
+                      "stare": "nok",
+                      "Messages": [
+                        {
+                          "message": "A aparut o eroare tehnica. Cod: XXX"
+                        }
+                      ],
+                      "trace_id": "ee2f572d-5b0c-4975-89be-6b93e1e31bc0"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response code 404",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "request invalid": {
+                    "description": "nu ati construit corect calea de context (lipsa variabila standard)",
+                    "value": {
+                      "timestamp": "2022-09-07T12:33:24.284+00:00",
+                      "status": 404,
+                      "error": "Not Found",
+                      "path": "/FCTEL/rest/validare/"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/validate/signature": {
+      "post": {
+        "tags": [
+          "XML Signature Validation"
+        ],
+        "summary": "Validează semnătura electronică",
+        "description": "Validează o semnătură electronică de tip 'detached' pentru un fișier XML",
+        "operationId": "validateSignature",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file",
+                  "signature"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "Fișierul XML care a fost semnat",
+                    "format": "binary"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Fișierul semnătură electronică de tip 'detached'",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validare / Nevalidare fișiere încărcate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "examples": {
+                  "Validare fisiere incarcate": {
+                    "description": "Validare fisiere incarcate",
+                    "value": {
+                      "msg": "Fișierele încărcate au fost validate cu succes, din perspectiva autenticității semnăturii aplicate și a apartenenței acesteia la XML-ul ce reprezintă factura electronică. Documentul factură de tip XML cu semnătura de validare atașată, este considerat document original din perspectiva legislativă și este generat prin intermediul sistemului național RO e-Factura."
+                    }
+                  },
+                  "Nevalidare fisiere incarcate": {
+                    "description": "Nevalidare fisiere incarcate",
+                    "value": {
+                      "msg": "Fișierele încărcate NU au putut fi validate cu succes, din perspectiva autenticității semnăturii aplicate și a apartenenței acesteia la XML-ul ce reprezintă factura electronică. Documentul factură de tip XML cu semnătura de validare atașată, NU poate fi considerat document original din perspectiva legislativă și NU este generat prin intermediul sistemului național RO e-Factura."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Eroare tehnică validare",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "msg": "Eroare tehnică: request incorect. Cauza: cel puțin unul din documente NU a fost încărcat sau NU este un fisier de tip XML specific facturii electronice."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GeneralErrorMessage": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "eroare": {
+            "type": "string"
+          },
+          "titlu": {
+            "type": "string"
+          }
+        }
+      },
+      "EfacturaJsonErrorMessage": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "EfacturaResponseHeader": {
+        "required": [
+          "stare",
+          "trace_id"
+        ],
+        "type": "object",
+        "properties": {
+          "stare": {
+            "type": "string"
+          },
+          "Messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EfacturaJsonErrorMessage"
+            }
+          },
+          "trace_id": {
+            "type": "string"
+          }
+        }
+      },
+      "EfacturaXmlErrorMessage": {
+        "type": "object",
+        "properties": {
+          "errorMessage": {
+            "type": "string",
+            "xml": {
+              "attribute": true
+            }
+          }
+        }
+      },
+      "EfacturaXmlHeader": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "xml": {
+              "name": "Errors"
+            },
+            "items": {
+              "$ref": "#/components/schemas/EfacturaXmlErrorMessage"
+            }
+          },
+          "stare": {
+            "type": "string",
+            "xml": {
+              "attribute": true
+            }
+          },
+          "idDescarcare": {
+            "type": "string",
+            "xml": {
+              "name": "id_descarcare",
+              "attribute": true
+            }
+          },
+          "dateResponse": {
+            "type": "string",
+            "xml": {
+              "attribute": true
+            }
+          },
+          "executionStatus": {
+            "type": "integer",
+            "format": "int32",
+            "xml": {
+              "name": "ExecutionStatus",
+              "attribute": true
+            }
+          },
+          "indexIncarcare": {
+            "type": "integer",
+            "format": "int64",
+            "xml": {
+              "name": "index_incarcare",
+              "attribute": true
+            }
+          }
+        },
+        "xml": {
+          "name": "header"
+        }
+      },
+      "EfacturaDetailedMessage": {
+        "type": "object",
+        "properties": {
+          "data_creare": {
+            "type": "string"
+          },
+          "cif": {
+            "type": "string"
+          },
+          "id_solicitare": {
+            "type": "string"
+          },
+          "detalii": {
+            "type": "string"
+          },
+          "tip": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
