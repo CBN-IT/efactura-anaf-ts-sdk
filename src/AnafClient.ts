@@ -620,23 +620,25 @@ export class AnafEfacturaClient {
 
   /**
    * Check if the current access token is valid and not expired
+   * @param buffer Time in seconds as buffer when the token is considered expired
    * @returns True if token is valid and not expired
    */
-  private isTokenValid(): boolean {
+  public isTokenValid(buffer = 30): boolean {
     if (!this.currentAccessToken || !this.accessTokenExpiresAt) {
       return false;
     }
 
     // Add 30 second buffer to avoid using tokens that are about to expire
-    const bufferMs = 30 * 1000;
+    const bufferMs = buffer * 1000;
     return Date.now() < this.accessTokenExpiresAt - bufferMs;
   }
 
   /**
    * Refresh the access token using the stored refresh token
+   * @returns The updated token
    * @throws {AnafAuthenticationError} If token refresh fails
    */
-  private async refreshAccessToken(): Promise<void> {
+  public async refreshAccessToken(): Promise<TokenResponse> {
     try {
       const tokenResponse: TokenResponse = await this.authenticator.refreshAccessToken(this.refreshToken);
 
@@ -647,11 +649,26 @@ export class AnafEfacturaClient {
       if (tokenResponse.refresh_token) {
         this.refreshToken = tokenResponse.refresh_token;
       }
+
+      return {
+        ...tokenResponse,
+        refresh_token: this.refreshToken
+      }
+
     } catch (error) {
       throw new AnafAuthenticationError(
         `Failed to refresh access token: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Refresh the access token using the stored refresh token
+   * @throws {AnafAuthenticationError} If token refresh fails
+   */
+  public setAccessToken(access_token: string, accessTokenExpiresAt: number | Date) {
+    this.currentAccessToken = access_token;
+    this.accessTokenExpiresAt = new Date(accessTokenExpiresAt).getTime();
   }
 
   private validateConfig(config: AnafEfacturaClientConfig): void {
